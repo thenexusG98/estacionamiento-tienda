@@ -1,6 +1,7 @@
 // src/components/Ventas.tsx
 import { useState } from 'react';
 import { FaPlus, FaTrashAlt } from 'react-icons/fa';
+import { invoke } from '@tauri-apps/api/core';
 
 type Producto = {
   id: number;
@@ -23,6 +24,19 @@ export default function Ventas() {
   const [itemsVenta, setItemsVenta] = useState<VentaItem[]>([]);
   const [productoSeleccionado, setProductoSeleccionado] = useState<Producto | null>(null);
   const [cantidad, setCantidad] = useState(1);
+
+  const finalizarVenta = async () => {
+    for (const item of itemsVenta) {
+      await invoke('registrar_venta', {
+        producto: item.producto.nombre,
+        cantidad: item.cantidad,
+        precioUnitario: item.producto.precio
+      });
+    }
+    alert('Venta registrada con éxito ✅');
+    setItemsVenta([]);
+  };
+  
 
   const agregarProducto = () => {
     if (productoSeleccionado) {
@@ -120,7 +134,8 @@ export default function Ventas() {
       {/* Total y botón de finalizar */}
       <div className="flex justify-between items-center">
         <p className="text-xl font-semibold">Total: ${total}</p>
-        <button className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
+        <button onClick={finalizarVenta}
+         className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
           Finalizar Venta
         </button>
       </div>
