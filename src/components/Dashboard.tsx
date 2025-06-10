@@ -31,7 +31,7 @@ import {
     cantidad_total: number;
   };
   
-  export default function Dashboard() {
+  export default function Dashboard({ setSection }: { setSection: (section: string) => void }) {
     const [resumen, setResumen] = useState({ total: 0, transacciones: 0 });
     const [productosBajos, setProductosBajos] = useState(0);
     const [masVendidos, setMasVendidos] = useState<any[]>([]);
@@ -91,10 +91,30 @@ import {
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-700 mb-4">Acceso Rápido</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <QuickAccess icon={<FaCashRegister />} label="Nueva Venta" color="bg-blue-600" />
-            <QuickAccess icon={<FaBoxOpen />} label="Nuevo Producto" color="bg-green-600" />
-            <QuickAccess icon={<FaClipboardList />} label="Inventario" color="bg-amber-600" />
-            <QuickAccess icon={<FaChartPie />} label="Reportes" color="bg-purple-600" />
+            <QuickAccess
+              icon={<FaCashRegister />}
+              label="Nueva Venta"
+              color="bg-blue-600"
+              onClick={() => setSection('ventas')}
+            />
+            <QuickAccess
+              icon={<FaBoxOpen />}
+              label="Nuevo Producto"
+              color="bg-green-600"
+              onClick={() => setSection('productos')}
+            />
+            <QuickAccess
+              icon={<FaClipboardList />}
+              label="Inventario"
+              color="bg-amber-600"
+              onClick={() => setSection('inventario')}
+            />
+            <QuickAccess
+              icon={<FaChartPie />}
+              label="Reportes"
+              color="bg-purple-600"
+              onClick={() => setSection('reportes')}
+            />
           </div>
         </div>
   
@@ -155,9 +175,12 @@ import {
     );
   }
   
-  function QuickAccess({ icon, label, color }: any) {
+  function QuickAccess({ icon, label, color, onClick }: any) {
     return (
-      <button className={`quick-access-btn ${color} hover:brightness-90 text-white p-4 rounded-xl flex flex-col items-center justify-center shadow-md`}>
+      <button
+        className={`quick-access-btn ${color} hover:brightness-90 text-white p-4 rounded-xl flex flex-col items-center justify-center shadow-md`}
+        onClick={onClick}
+      >
         <div className="text-3xl mb-2">{icon}</div>
         <span className="font-medium">{label}</span>
       </button>
@@ -180,4 +203,3 @@ import {
       </div>
     );
   }
-  

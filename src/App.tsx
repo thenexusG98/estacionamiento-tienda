@@ -16,7 +16,7 @@ export default function App() {
     <div className="flex h-screen bg-gray-100">
       <Sidebar setSection={setSection} />
       <div className="flex-1 overflow-y-auto">
-        {section === 'dashboard' && <Dashboard />}
+        {section === 'dashboard' && <Dashboard setSection={setSection} />}
         {section === 'ventas' && <Ventas />}
         {section === 'inventario' && <Inventario />}
         {section === 'productos' && <Productos />}
