@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { obtenerProductos, actualizarProducto } from '../lib/db';
+import { FaEdit, FaTrashAlt } from 'react-icons/fa';
+import { obtenerProductos, actualizarProducto, eliminarProducto } from '../lib/db';
 
 type Producto = {
   id: number;
@@ -29,6 +30,19 @@ export default function Inventario() {
     setEditNombre(producto.nombre);
     setEditPrecio(producto.precio);
     setEditStock(producto.stock);
+  };
+
+  const comenzarEliminacion = async (id: number) => {
+    if (window.confirm('¿Estás seguro de eliminar este producto?')) {
+      try {
+        await eliminarProducto(id); // Asumiendo que la eliminación se maneja con un precio y stock a 0
+        alert('Producto eliminado correctamente ✅');
+        await cargarProductos();
+      } catch (err) {
+        alert('Ocurrió un error al eliminar el producto.');
+        console.error(err);
+      }
+    }
   };
 
   const guardarEdicion = async () => {
@@ -97,12 +111,12 @@ export default function Inventario() {
                     p.stock
                   )}
                 </td>
-                <td className="py-2 px-4 border">
+                <td className="py-2 px-4 border ">
                   {editandoId === p.id ? (
-                    <>
+                    <div className="flex space-x-2">
                       <button
                         onClick={guardarEdicion}
-                        className="text-green-600 mr-2 hover:underline"
+                        className="text-green-600 hover:underline"
                       >
                         Guardar
                       </button>
@@ -112,14 +126,22 @@ export default function Inventario() {
                       >
                         Cancelar
                       </button>
-                    </>
+                    </div>
                   ) : (
-                    <button
-                      onClick={() => comenzarEdicion(p)}
-                      className="text-blue-600 hover:underline"
-                    >
-                      Editar
-                    </button>
+                    <div className="flex space-x-4">
+                      <button
+                        onClick={() => comenzarEdicion(p)}
+                        className="text-blue-600 hover:underline flex items-center"
+                      >
+                        <FaEdit className="mr-1" /> Editar
+                      </button>
+                      <button
+                        onClick={() => comenzarEliminacion(p.id)}
+                        className="text-red-600 hover:underline flex items-center"
+                      >
+                        <FaTrashAlt className="mr-1" /> Eliminar
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>

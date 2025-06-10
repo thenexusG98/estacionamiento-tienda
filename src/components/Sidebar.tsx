@@ -45,7 +45,7 @@ export default function Sidebar({ setSection }: SidebarProps) {
               <button
                 onClick={() => handleClick(key)}
                 className={`menu-item flex items-center py-3 px-4 rounded-lg w-full text-left ${
-                  active === key ? 'bg-white bg-opacity-10 border-l-4 border-white' : 'hover:bg-white hover:bg-opacity-10'
+                  active === key ? 'bg-blue-400 bg-opacity-10 border-l-4 border-blue-400' : 'hover:bg-blue-300 hover:bg-opacity-10'
                 }`}
               >
                 <span className="w-6 mr-3">{icon}</span>

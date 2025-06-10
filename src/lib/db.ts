@@ -36,6 +36,13 @@ export async function getDb() {
       );
     `);
 
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS estacionamiento_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha_hora TEXT NOT NULL
+      );
+    `);
+
   return db;
 }
 
@@ -84,6 +91,15 @@ export async function obtenerVentas() {
     await db.execute(
       `UPDATE productos SET nombre = ?, precio = ?, stock = ? WHERE id = ?`,
       [nombre, precio, stock, id]
+    );
+  }
+
+  export async function eliminarProducto(id: number) {
+    const db = await getDb();
+  
+    await db.execute(
+      `DELETE FROM productos WHERE id = ?`,
+      [id]
     );
   }
   
@@ -139,4 +155,3 @@ export async function obtenerVentas() {
   
     return cantidad;
   }
-  
