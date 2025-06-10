@@ -24,6 +24,7 @@ export default function Sidebar({ setSection }: SidebarProps) {
 
   const menuItems = [
     { icon: <FaTachometerAlt />, label: 'Dashboard', key: 'dashboard' },
+    { icon: <FaTachometerAlt />, label: 'Estacionamiento', key: 'estacionamiento' },
     { icon: <FaCashRegister />, label: 'Ventas', key: 'ventas' },
     { icon: <FaBoxes />, label: 'Inventario', key: 'inventario' },
     { icon: <FaBoxOpen />, label: 'Registrar Productos', key: 'productos' },

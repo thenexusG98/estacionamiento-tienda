@@ -11,11 +11,6 @@ import {
     FaBoxOpen,
     FaClipboardList,
     FaChartPie,
-    FaBreadSlice,
-    FaEgg,
-    FaGlassWhiskey,
-    FaCheese,
-    FaCookie,
     FaStar,
   } from 'react-icons/fa';
   
@@ -24,12 +19,6 @@ import {
     month: 'long',
     year: 'numeric',
   });
-
-  type ProductoMasVendido = {
-    producto: string;
-    total_vendido: number;
-    cantidad_total: number;
-  };
   
   export default function Dashboard({ setSection }: { setSection: (section: string) => void }) {
     const [resumen, setResumen] = useState({ total: 0, transacciones: 0 });
@@ -187,19 +176,4 @@ import {
     );
   }
   
-  function TopProduct({ icon, name, unidades, porcentaje }: any) {
-    return (
-      <div className="flex items-center mb-4">
-        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">{icon}</div>
-        <div className="flex-1">
-          <div className="flex justify-between">
-            <h4 className="font-medium">{name}</h4>
-            <span className="text-gray-600">{unidades} unidades</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${porcentaje}%` }}></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
