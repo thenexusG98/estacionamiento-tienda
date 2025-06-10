@@ -1,4 +1,7 @@
 // src/components/Dashboard.tsx
+import { useEffect, useState } from 'react';
+import { obtenerResumenDelDia, contarProductosBajos, obtenerProductosMasVendidos } from '../lib/db';
+
 import {
     FaDollarSign,
     FaArrowUp,
@@ -13,6 +16,7 @@ import {
     FaGlassWhiskey,
     FaCheese,
     FaCookie,
+    FaStar,
   } from 'react-icons/fa';
   
   const currentDate = new Date().toLocaleDateString('es-MX', {
@@ -20,8 +24,33 @@ import {
     month: 'long',
     year: 'numeric',
   });
+
+  type ProductoMasVendido = {
+    producto: string;
+    total_vendido: number;
+    cantidad_total: number;
+  };
   
   export default function Dashboard() {
+    const [resumen, setResumen] = useState({ total: 0, transacciones: 0 });
+    const [productosBajos, setProductosBajos] = useState(0);
+    const [masVendidos, setMasVendidos] = useState<any[]>([]);
+
+    useEffect(() => {
+      const cargarDatos = async () => {
+        const [res, bajos, masVend] = await Promise.all([
+          obtenerResumenDelDia(),
+          contarProductosBajos(),
+          obtenerProductosMasVendidos(),
+        ]);
+        setResumen(res);
+        setProductosBajos(bajos);
+        setMasVendidos(masVend);
+      };
+  
+      cargarDatos();
+    }, []);
+
     return (
       <div className="p-6">
         {/* Título */}
@@ -39,22 +68,22 @@ import {
             icon={<FaDollarSign className="text-blue-600 text-xl" />}
             bgColor="bg-blue-100"
             title="Ventas del día"
-            value="$8,459.00"
-            subtitle="12% más que ayer"
+            value={`$${resumen.total.toFixed(2)}`}
+            subtitle="Comparativo no implementado"
           />
           <SummaryCard
             icon={<FaShoppingCart className="text-green-600 text-xl" />}
             bgColor="bg-green-100"
             title="Transacciones"
-            value="142"
-            subtitle="8% más que ayer"
+            value={resumen.transacciones.toString()}
+            subtitle="Comparativo no implementado"
           />
           <SummaryCard
             icon={<FaExclamationTriangle className="text-red-600 text-xl" />}
             bgColor="bg-red-100"
             title="Productos bajos"
-            value="7"
-            subtitle="3 más que ayer"
+            value={productosBajos.toString()}
+            subtitle="Stock ≤ 5"
           />
         </div>
   
@@ -71,20 +100,38 @@ import {
   
         {/* Productos más vendidos (muestra fija por ahora) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-lg font-semibold text-gray-700 mb-4">Productos Más Vendidos</h3>
-            <TopProduct icon={<FaBreadSlice />} name="Pan Blanco" unidades="142" porcentaje={85} />
-            <TopProduct icon={<FaEgg />} name="Huevos (Docena)" unidades="98" porcentaje={70} />
-            <TopProduct icon={<FaGlassWhiskey />} name="Agua Embotellada" unidades="87" porcentaje={65} />
-            <TopProduct icon={<FaCheese />} name="Queso Fresco" unidades="76" porcentaje={55} />
-            <TopProduct icon={<FaCookie />} name="Galletas" unidades="65" porcentaje={45} />
-          </div>
-  
-          <div className="bg-white p-6 rounded-xl shadow-md">
-            <h3 className="text-lg font-semibold text-gray-700 mb-4">Ventas de la Semana</h3>
-            <div className="text-gray-500">[Aquí iría un gráfico con Chart.js]</div>
-          </div>
+        <div className="bg-white p-6 rounded-xl shadow-md">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">
+            Productos Más Vendidos
+          </h3>
+          {masVendidos.length === 0 ? (
+            <p className="text-gray-500">No hay ventas registradas aún.</p>
+          ) : (
+            masVendidos.map((p, index) => (
+              <div className="flex items-center mb-4" key={index}>
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4">
+                  <FaStar className="text-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between font-medium">
+                    <span>{p.producto}</span>
+                    <span>{p.cantidad_total} unidades</span>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Total vendido: ${p.total_vendido.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
+
+        {/* puedes dejar la otra mitad para ventas de la semana o gráfico */}
+        <div className="bg-white p-6 rounded-xl shadow-md">
+          <h3 className="text-lg font-semibold text-gray-700 mb-4">Ventas de la Semana</h3>
+          <div className="text-gray-500">[Aquí puedes insertar Chart.js]</div>
+        </div>
+      </div>
       </div>
     );
   }

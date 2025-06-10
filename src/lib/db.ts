@@ -87,4 +87,56 @@ export async function obtenerVentas() {
     );
   }
   
+  export async function obtenerProductosMasVendidos(limit = 5) {
+    const db = await getDb();
+  
+    const productos = await db.select<{
+      producto: string;
+      total_vendido: number;
+      cantidad_total: number;
+    }[]>(
+      `
+      SELECT 
+        producto,
+        SUM(total) AS total_vendido,
+        SUM(cantidad) AS cantidad_total
+      FROM ventas
+      GROUP BY producto
+      ORDER BY cantidad_total DESC
+      LIMIT ?
+      `,
+      [limit]
+    );
+  
+    return productos;
+  }
+  
+  export async function obtenerResumenDelDia() {
+    const db = await getDb();
+  
+    const hoy = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  
+    const [{ total = 0 } = {}] = await db.select<{ total: number }[]>(
+      `SELECT SUM(total) as total FROM ventas_totales WHERE fecha LIKE ?`,
+      [`${hoy}%`]
+    );
+  
+    const [{ transacciones = 0 } = {}] = await db.select<{ transacciones: number }[]>(
+      `SELECT COUNT(*) as transacciones FROM ventas_totales WHERE fecha LIKE ?`,
+      [`${hoy}%`]
+    );
+  
+    return { total, transacciones };
+  }
+  
+  export async function contarProductosBajos(threshold = 5) {
+    const db = await getDb();
+  
+    const [{ cantidad = 0 } = {}] = await db.select<{ cantidad: number }[]>(
+      `SELECT COUNT(*) as cantidad FROM productos WHERE stock <= ?`,
+      [threshold]
+    );
+  
+    return cantidad;
+  }
   
