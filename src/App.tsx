@@ -6,6 +6,7 @@ import Productos from './components/Productos';
 import Reportes from './components/Reportes';
 import VentasRegistradas from './components/VentasRegistradas';
 import Estacionamiento from './components/Estacionamiento';
+import Baños from './components/Baños';
 
 import { useState } from 'react';
 import './App.css'
@@ -24,6 +25,7 @@ export default function App() {
         {section === 'reportes' && <Reportes />}
         {section === 'ventas-registradas' && <VentasRegistradas />}
         {section === 'estacionamiento' && <Estacionamiento />}
+        {section === 'baños' && <Baños />}
       </div>
     </div>
   );

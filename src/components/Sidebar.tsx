@@ -8,6 +8,8 @@ import {
   FaBoxOpen,
   FaChartBar,
   FaSignOutAlt,
+  FaCar,
+  FaToilet 
 } from 'react-icons/fa';
 
 interface SidebarProps {
@@ -24,7 +26,8 @@ export default function Sidebar({ setSection }: SidebarProps) {
 
   const menuItems = [
     { icon: <FaTachometerAlt />, label: 'Dashboard', key: 'dashboard' },
-    { icon: <FaTachometerAlt />, label: 'Estacionamiento', key: 'estacionamiento' },
+    { icon: <FaCar />, label: 'Estacionamiento', key: 'estacionamiento' },
+    { icon: <FaToilet  />, label: 'Baños', key: 'baños' },
     { icon: <FaCashRegister />, label: 'Ventas', key: 'ventas' },
     { icon: <FaBoxes />, label: 'Inventario', key: 'inventario' },
     { icon: <FaBoxOpen />, label: 'Registrar Productos', key: 'productos' },
