@@ -1,7 +1,7 @@
 // src/components/Ventas.tsx
 import { useState } from 'react';
 import { FaPlus, FaTrashAlt } from 'react-icons/fa';
-import { invoke } from '@tauri-apps/api/core';
+import { getDb } from '../lib/db';
 
 type Producto = {
   id: number;
@@ -26,14 +26,26 @@ export default function Ventas() {
   const [cantidad, setCantidad] = useState(1);
 
   const finalizarVenta = async () => {
+    const db = await getDb();
+
+    const fecha = new Date().toISOString();
+    const totalVenta = itemsVenta.reduce((sum, item) => sum + item.cantidad * item.producto.precio, 0);
+
+    const ventaId = await db.execute(
+        `INSERT INTO ventas_totales (total, fecha) VALUES (?, ?)`,
+        [totalVenta, fecha]
+    );
+
     for (const item of itemsVenta) {
-      await invoke('registrar_venta', {
-        producto: item.producto.nombre,
-        cantidad: item.cantidad,
-        precioUnitario: item.producto.precio
-      });
+        const total = item.cantidad * item.producto.precio;
+
+        await db.execute(
+            `INSERT INTO ventas (venta_id, producto, cantidad, precio_unitario, total) VALUES (?, ?, ?, ?, ?)`,
+            [ventaId, item.producto.nombre, item.cantidad, item.producto.precio, total]
+        );
     }
-    alert('Venta registrada con éxito ✅');
+
+    alert('Venta registrada ✅');
     setItemsVenta([]);
   };
   

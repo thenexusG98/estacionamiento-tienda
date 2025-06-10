@@ -31,5 +31,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "sql": {
+      "enabled": true,
+      "config": {
+        "filePath": "sqlite:data.db"
+      }
+    }
   }
 }

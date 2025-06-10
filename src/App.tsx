@@ -4,6 +4,8 @@ import Ventas from './components/Ventas';
 import Inventario from './components/Inventario';
 import Productos from './components/Productos';
 import Reportes from './components/Reportes';
+import VentasRegistradas from './components/VentasRegistradas';
+
 import { useState } from 'react';
 import './App.css'
 
@@ -19,6 +21,7 @@ export default function App() {
         {section === 'inventario' && <Inventario />}
         {section === 'productos' && <Productos />}
         {section === 'reportes' && <Reportes />}
+        {section === 'ventas-registradas' && <VentasRegistradas />}
       </div>
     </div>
   );
