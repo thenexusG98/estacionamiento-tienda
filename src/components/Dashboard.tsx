@@ -1,6 +1,8 @@
 // src/components/Dashboard.tsx
 import { useEffect, useState } from 'react';
-import { obtenerResumenDelDia, contarProductosBajos, obtenerProductosMasVendidos } from '../lib/db';
+import { obtenerResumenDelDia, contarProductosBajos, obtenerProductosMasVendidos,
+  registrarBaño
+ } from '../lib/db';
 
 import {
     FaDollarSign,
@@ -12,6 +14,7 @@ import {
     FaClipboardList,
     FaChartPie,
     FaStar,
+    FaToilet
   } from 'react-icons/fa';
   
   const currentDate = new Date().toLocaleDateString('es-MX', {
@@ -24,6 +27,20 @@ import {
     const [resumen, setResumen] = useState({ total: 0, transacciones: 0 });
     const [productosBajos, setProductosBajos] = useState(0);
     const [masVendidos, setMasVendidos] = useState<any[]>([]);
+    const [monto, setMonto] = useState<number | null>(null);
+    const montoFijo = 5;
+    
+    const registrarUsoBaño = async () => {
+
+        if (monto === null) {
+          alert('Por favor, ingrese un monto válido.');
+          return;
+        }
+    
+        const fechaHora = new Date().toISOString();
+        await registrarBaño(fechaHora, montoFijo);
+        alert('Uso del baño registrado correctamente.');
+      };
 
     useEffect(() => {
       const cargarDatos = async () => {
@@ -57,7 +74,7 @@ import {
             icon={<FaDollarSign className="text-blue-600 text-xl" />}
             bgColor="bg-blue-100"
             title="Ventas del día"
-            value={`$${resumen.total.toFixed(2)}`}
+            value={`$${(resumen.total || 0).toFixed(2)}`}
             subtitle="Comparativo no implementado"
           />
           <SummaryCard
@@ -103,6 +120,12 @@ import {
               label="Reportes"
               color="bg-purple-600"
               onClick={() => setSection('reportes')}
+            />
+            <QuickAccess
+              icon={<FaToilet />}
+              label="Registrar Baño"
+              color="bg-blue-400"
+              onClick={() => registrarUsoBaño()}
             />
           </div>
         </div>
@@ -175,5 +198,5 @@ import {
       </button>
     );
   }
-  
+
 

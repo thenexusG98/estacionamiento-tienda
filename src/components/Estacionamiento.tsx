@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { getDb } from '../lib/db'
 
 export default function Estacionamiento() {
@@ -8,12 +8,6 @@ export default function Estacionamiento() {
 
   const generateTicket = async () => {
     const db = await getDb()
-    const now = new Date().toISOString()
-
-    const result = await db.execute(
-      `INSERT INTO estacionamiento_tickets (fecha_hora) VALUES (?)`,
-      [now]
-    )
 
     const [{ id }] = await db.select<{ id: number }[]>(
       `SELECT last_insert_rowid() AS id`

@@ -43,6 +43,14 @@ export async function getDb() {
       );
     `);
 
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS baños (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha_hora TEXT NOT NULL,
+        monto REAL NOT NULL
+      );
+    `);
+
   return db;
 }
 
@@ -155,3 +163,12 @@ export async function obtenerVentas() {
   
     return cantidad;
   }
+
+  export async function registrarBaño(fechaHora: string, monto: number) {
+    const db = await getDb();
+
+    await db.execute(
+      `INSERT INTO baños (fecha_hora, monto) VALUES (?, ?)`,
+      [fechaHora, monto]
+    );
+}
