@@ -9,7 +9,7 @@ export default function Estacionamiento() {
   const [fee, setFee] = useState<number | null>(null)
   const [generando, setGenerando] = useState(false);
 
-  const generateTicket = async () => {
+  /*const generateTicket = async () => {
     const db = await getDb()
 
     const [{ id }] = await db.select<{ id: number }[]>(
@@ -18,7 +18,7 @@ export default function Estacionamiento() {
 
     setTicketId(id)
     alert(`Ticket generado con ID: ${id}`)
-  }
+  }*/
 
   const handleGenerarTicket = async () => {
       setGenerando(true);

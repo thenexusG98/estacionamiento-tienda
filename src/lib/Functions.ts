@@ -1,4 +1,4 @@
-import { writeTextFile, BaseDirectory, RemoveOptions, remove } from '@tauri-apps/plugin-fs';
+import { writeTextFile, RemoveOptions, remove } from '@tauri-apps/plugin-fs';
 import { Command } from '@tauri-apps/plugin-shell';
 import { join, appDataDir } from '@tauri-apps/api/path';
 
@@ -33,7 +33,7 @@ export async function imprimirTicketDesdeFrontend(id: number) {
   await writeTextFile(path, contenido);
 
   // Enviar a imprimir usando el comando de sistema
-  const cmd = Command.create('print_ticket', [
+  Command.create('print_ticket', [
     '/C',
     `print /D:default ${path}`
   ]).execute();
