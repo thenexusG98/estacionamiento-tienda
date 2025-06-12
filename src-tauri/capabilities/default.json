@@ -10,6 +10,46 @@
     "opener:default",
     "sql:default",
     "sql:allow-execute",
-    "sql:default"
+    "sql:default",
+    "shell:default",
+    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        {
+          "path": "$APPDATA"
+        },
+        {
+          "path": "$APPDATA/**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:write-files",
+      "allow": [
+        {
+          "path": "$APPDATA/ticket_*.txt"
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "print_ticket",
+          "cmd": "cmd.exe",
+          "args": [
+            "*/C",
+            "*"
+          ]
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        { "path": "$APPDATA/databases/*" }
+      ]
+    }
   ]
 }

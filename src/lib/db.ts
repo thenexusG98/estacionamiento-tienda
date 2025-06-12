@@ -51,6 +51,15 @@ export async function getDb() {
       );
     `);
 
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha_entrada TEXT NOT NULL,
+        fecha_salida TEXT,
+        total REAL
+      )
+    `);
+
   return db;
 }
 
@@ -172,3 +181,53 @@ export async function obtenerVentas() {
       [fechaHora, monto]
     );
 }
+
+export async function registrarTicketEstacionamiento(fecha_entrada: string) {
+  const db = await getDb();
+
+  await db.execute(
+    `INSERT INTO tickets (fecha_entrada) VALUES (?)`,
+    [fecha_entrada]
+  );
+
+  const [{ id }] = await db.select<{ id: number }[]>(`SELECT last_insert_rowid() AS id`);
+  return id;
+}
+
+export async function obtenerTicketsActivos() {
+  const db = await getDb();
+
+  const activos = await db.select<{
+    id: number;
+    fecha_entrada: string;
+  }[]>(
+    `SELECT id, fecha_entrada FROM tickets WHERE fecha_salida IS NULL`
+  );
+
+  return activos;
+}
+
+export async function obtenerTicketsDelDia() {
+  const db = await getDb();
+  const hoy = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const tickets = await db.select<{
+    id: number;
+    fecha_entrada: string;
+    fecha_salida: string;
+    total: number;
+  }[]>(
+    `SELECT id, fecha_entrada, fecha_salida, total
+     FROM tickets
+     WHERE fecha_entrada LIKE ? AND fecha_salida IS NOT NULL`,
+    [`${hoy}%`]
+  );
+
+  const [{ total = 0 } = {}] = await db.select<{ total: number }[]>(
+    `SELECT SUM(total) as total FROM tickets WHERE fecha_entrada LIKE ? AND fecha_salida IS NOT NULL`,
+    [`${hoy}%`]
+  );
+
+  return { tickets, total };
+}
+

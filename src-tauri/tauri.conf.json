@@ -33,6 +33,9 @@
     ]
   },
   "plugins": {
+    "printer": {
+      "default": true
+    },
     "sql": {
       "enabled": true,
       "config": {
@@ -41,3 +44,4 @@
     }
   }
 }
+

@@ -1,10 +1,13 @@
 import { useState } from 'react'
-import { getDb } from '../lib/db'
+import { getDb, registrarTicketEstacionamiento } from '../lib/db'
+import { imprimirTicketDesdeFrontend } from '../lib/Functions';
+
 
 export default function Estacionamiento() {
   const [ticketId, setTicketId] = useState<number | null>(null)
   const [elapsedTime, setElapsedTime] = useState<string | null>(null)
   const [fee, setFee] = useState<number | null>(null)
+  const [generando, setGenerando] = useState(false);
 
   const generateTicket = async () => {
     const db = await getDb()
@@ -16,6 +19,24 @@ export default function Estacionamiento() {
     setTicketId(id)
     alert(`Ticket generado con ID: ${id}`)
   }
+
+  const handleGenerarTicket = async () => {
+      setGenerando(true);
+      try {
+        const fecha = new Date().toISOString();
+        const id = await registrarTicketEstacionamiento(fecha);
+
+        await  imprimirTicketDesdeFrontend(id);
+        
+        alert(`Ticket generado e impreso. ID: ${id}`);
+
+      } catch (error) {
+        console.error('Error al generar ticket:', error);
+        alert('Ocurrió un error al generar el ticket.');
+      } finally {
+        setGenerando(false);
+      }
+    };
 
   const checkTicket = async (id: number) => {
     const db = await getDb()
@@ -41,10 +62,11 @@ export default function Estacionamiento() {
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Estacionamiento</h2>
 
       <button
-        onClick={generateTicket}
+        onClick={handleGenerarTicket}
+        disabled={generando}
         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
       >
-        Generar Ticket
+         {generando ? 'Generando...' : 'Generar'}
       </button>
 
       <div className="mt-6">
