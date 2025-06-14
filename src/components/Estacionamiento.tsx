@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { getDb, registrarTicketEstacionamiento } from '../lib/db'
-import { imprimirTicketDesdeFrontend } from '../lib/Functions';
+import createPdf  from '../lib/CreateTicket';
 
 
 export default function Estacionamiento() {
@@ -21,12 +21,15 @@ export default function Estacionamiento() {
   }*/
 
   const handleGenerarTicket = async () => {
+    
       setGenerando(true);
       try {
         const fecha = new Date().toISOString();
         const id = await registrarTicketEstacionamiento(fecha);
 
-        await  imprimirTicketDesdeFrontend(id);
+        const resultado = await createPdf({ id }, 'print');
+
+        //await  imprimirTicketDesdeFrontend(id);
         
         alert(`Ticket generado e impreso. ID: ${id}`);
 
