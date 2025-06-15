@@ -1,4 +1,3 @@
-import React from 'react';
 import { registrarBaño } from '../lib/db';
 
 export default function Baños() {
