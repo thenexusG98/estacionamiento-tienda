@@ -90,21 +90,21 @@ import {
             bgColor="bg-blue-100"
             title="Ventas del día"
             value={`$${(resumen.total || 0).toFixed(2)}`}
-            subtitle="Comparativo no implementado"
+            subtitle="Ventas del dia de hoy"
           />
           <SummaryCard
             icon={<FaShoppingCart className="text-green-600 text-xl" />}
             bgColor="bg-green-100"
             title="Transacciones"
             value={(resumen.transaccion || 0).toFixed(2)}
-            subtitle="Comparativo no implementado"
+            subtitle="Total de ventas realizadas hoy"
           />
           <SummaryCard
             icon={<FaExclamationTriangle className="text-red-600 text-xl" />}
             bgColor="bg-red-100"
             title="Productos bajos"
             value={productosBajos.toString()}
-            subtitle="Stock ≤ 5"
+            subtitle="Productos con stock bajo"
           />
         </div>
   
