@@ -61,7 +61,7 @@ export default function Estacionamiento() {
     const ratePerHour = 10 // Example rate
     const totalFee = diffHours * ratePerHour
 
-    await registrarSalidaTicketEstacionamiento(id, endTime.toISOString(), totalFee)
+    await registrarSalidaTicketEstacionamiento(id, endTime.toISOString())
     
     
     setElapsedTime(`${diffHours} horas`)

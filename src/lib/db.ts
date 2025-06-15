@@ -207,7 +207,7 @@ export async function registrarTicketEstacionamiento(fecha_entrada: string) {
   return id;
 }
 
-export async function registrarSalidaTicketEstacionamiento(id: number, fecha_salida: string, total: number) {
+export async function registrarSalidaTicketEstacionamiento(id: number, fecha_salida: string) {
   const db = await getDb();
   await db.execute(
     `UPDATE tickets 
@@ -255,24 +255,31 @@ export async function obtenerTicket(id: number): Promise<{
 
 export async function obtenerTicketsDelDia() {
   const db = await getDb();
-  const hoy = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const fecha = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
   const tickets = await db.select<{
-    id: number;
-    fecha_entrada: string;
-    fecha_salida: string;
-    total: number;
+    total: number | null;
   }[]>(
-    `SELECT id, fecha_entrada, fecha_salida, total
-     FROM tickets
-     WHERE fecha_entrada LIKE ? AND fecha_salida IS NOT NULL`,
-    [`${hoy}%`]
+    `SELECT SUM(total) as total
+      FROM tickets
+      WHERE DATE(fecha_salida) = ?`, [fecha]
   );
 
-  const [{ total = 0 } = {}] = await db.select<{ total: number }[]>(
-    `SELECT SUM(total) as total FROM tickets WHERE fecha_entrada LIKE ? AND fecha_salida IS NOT NULL`,
-    [`${hoy}%`]
+  const baños = await db.select<{
+    total: number | null;
+  }[]>(
+    `SELECT SUM(monto) as total 
+    FROM baños WHERE fecha_hora = ?`, [fecha]
   );
 
-  return { tickets, total };
+  const ventas_totales = await db.select<{
+    total: number | null;
+  }[]>(
+    `SELECT SUM(total) as total 
+    FROM ventas_totales WHERE fecha = ?`, [fecha]
+  );
+
+  return {  tickets: tickets[0].total || 0,
+    baños: baños[0].total || 0,
+    ventas_totales: ventas_totales[0].total || 0, };
 }

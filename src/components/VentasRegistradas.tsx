@@ -1,37 +1,87 @@
 import { useEffect, useState } from 'react';
-import { obtenerVentas } from '../lib/db';
+import { obtenerTicketsDelDia } from '../lib/db';
 
-type Venta = {
-  id: number;
-  fecha: string;
-  producto: string;
-  cantidad: number;
-  precio_unitario: number;
-  total: number;
-};
-
-type VentaAgrupada = {
-  fecha: string;
-  categoria: string;
-  ventas: Venta[];
-};
 
 export default function VentasRegistradas() {
-  const [ventas, setVentas] = useState<Venta[]>([]);
-  const [agrupadas, setAgrupadas] = useState<VentaAgrupada[]>([]);
+  const [datos, setDatos] = useState<{
+    tickets: number;
+    baños: number;
+    ventas_totales: number;
+  }>({ tickets: 0, baños: 0, ventas_totales: 0 });
+
 
   useEffect(() => {
   
     const cargarVentas = async () => {
-      const data = await obtenerVentas();
-      setVentas(data);
+    const resumen = await obtenerTicketsDelDia();
+      setDatos(resumen);
+      
     };
 
     cargarVentas();
   }, []);
 
+  const fecha = new Date().toISOString().slice(0, 10);
+
+  const ventaTotal = datos.tickets + datos.baños + datos.ventas_totales;
+  if (ventaTotal === 0) {
+    return (
+      <div className="bg-white shadow rounded-lg p-4 mb-4 w-5/6 items-center mx-auto">
+        <h3 className="text-lg font-semibold text-gray-800">No hay ventas registradas para hoy.</h3>
+      </div>
+    );
+  }
+
+  const datosTransformados = [
+    {
+      fecha,
+      categoria: 'estacionamiento',
+      total: datos.tickets,
+    },
+    {
+      fecha,
+      categoria: 'baños',
+      total: datos.baños,
+    },
+    {
+      fecha,
+      categoria: 'tienda',
+      total: datos.ventas_totales,
+    },
+  ];
+
   return (
-    <div className="p-6">
+    <>
+      {datosTransformados.map((grupo: { fecha: string; categoria: string; total: number }, i: number) => (
+        <div key={i} className="bg-white shadow rounded-lg p-4 mb-4 w-5/6 items-center mx-auto">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-lg font-semibold">
+              {grupo.fecha} — {grupo.categoria.toUpperCase()}
+            </h3>
+            <span className="text-green-600 font-bold">
+              ${grupo.total.toFixed(2)}
+            </span>
+          </div>
+          <div className="text-sm text-gray-600">Total vendido</div>
+        </div>
+      ))}
+      <div className="bg-white shadow rounded-lg p-4 mb-4 w-5/6 items-center mx-auto">
+        <h3 className="text-lg font-semibold text-gray-800 text-center ">
+          Total del día: ${ventaTotal.toFixed(2)}
+        </h3>
+        <div className="flex justify-center mt-2">
+          <button>
+            <span className="text-sm hover:underline bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+              Descargar ventas del día
+            </span>
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
+
+    /*<div className="p-6">
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Historial de Ventas</h2>
 
       {ventas.length === 0 ? (
@@ -63,5 +113,5 @@ export default function VentasRegistradas() {
         </div>
       )}
     </div>
-  );
+  );*/
 }
