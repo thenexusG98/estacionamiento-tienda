@@ -3,17 +3,25 @@ import { obtenerVentas } from '../lib/db';
 
 type Venta = {
   id: number;
+  fecha: string;
   producto: string;
   cantidad: number;
   precio_unitario: number;
   total: number;
+};
+
+type VentaAgrupada = {
   fecha: string;
+  categoria: string;
+  ventas: Venta[];
 };
 
 export default function VentasRegistradas() {
   const [ventas, setVentas] = useState<Venta[]>([]);
+  const [agrupadas, setAgrupadas] = useState<VentaAgrupada[]>([]);
 
   useEffect(() => {
+  
     const cargarVentas = async () => {
       const data = await obtenerVentas();
       setVentas(data);

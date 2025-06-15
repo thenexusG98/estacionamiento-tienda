@@ -4,13 +4,12 @@ const dbFile = 'sqlite:data.db'; // nombre del archivo en la raíz de almacenami
 
 export async function getDb() {
     const db = await Database.load(dbFile);
-
     // Tabla principal: resumen por venta
     await db.execute(`
       CREATE TABLE IF NOT EXISTS ventas_totales (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        total REAL NOT NULL,
-        fecha TEXT NOT NULL
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      total REAL NOT NULL,
+      fecha TEXT NOT NULL
       );
     `);
 
@@ -22,7 +21,7 @@ export async function getDb() {
         producto TEXT NOT NULL,
         cantidad INTEGER NOT NULL,
         precio_unitario REAL NOT NULL,
-        total REAL NOT NULL,
+        total REAL NOT NULL,  
         FOREIGN KEY (venta_id) REFERENCES ventas_totales(id)
       );
     `);
@@ -60,6 +59,8 @@ export async function getDb() {
       )
     `);
 
+
+
   return db;
 }
 
@@ -68,14 +69,23 @@ export async function obtenerVentas() {
   
     const rows = await db.select<{
       id: number;
+      fecha: string;
       producto: string;
       cantidad: number;
       precio_unitario: number;
       total: number;
-      fecha: string;
-    }[]>(
-      'SELECT id, producto, cantidad, precio_unitario, total, fecha FROM ventas ORDER BY fecha DESC'
-    );
+    }[]>(`
+      SELECT 
+        v.id,
+        vt.fecha,
+        v.producto,
+        v.cantidad,
+        v.precio_unitario,
+        v.total
+      FROM ventas v
+      JOIN ventas_totales vt ON v.venta_id = vt.id
+      ORDER BY vt.fecha DESC
+    `);
   
     return rows;
   }
@@ -153,6 +163,7 @@ export async function obtenerVentas() {
       `SELECT SUM(total) as total FROM ventas_totales WHERE fecha LIKE ?`,
       [`${hoy}%`]
     );
+    console.log(`Total del día: ${total}`);
   
     const [{ transacciones = 0 } = {}] = await db.select<{ transacciones: number }[]>(
       `SELECT COUNT(*) as transacciones FROM ventas_totales WHERE fecha LIKE ?`,
@@ -180,6 +191,8 @@ export async function obtenerVentas() {
       `INSERT INTO baños (fecha_hora, monto) VALUES (?, ?)`,
       [fechaHora, monto]
     );
+
+    
 }
 
 export async function registrarTicketEstacionamiento(fecha_entrada: string) {
@@ -194,18 +207,51 @@ export async function registrarTicketEstacionamiento(fecha_entrada: string) {
   return id;
 }
 
-export async function obtenerTicketsActivos() {
+export async function registrarSalidaTicketEstacionamiento(id: number, fecha_salida: string, total: number) {
   const db = await getDb();
+  await db.execute(
+    `UPDATE tickets 
+     SET fecha_salida = ?
+     WHERE id = ? AND (total IS NULL OR total = '')`,
+    [fecha_salida, id]
+  );
+ // return id;
+}
 
-  const activos = await db.select<{
-    id: number;
-    fecha_entrada: string;
-  }[]>(
-    `SELECT id, fecha_entrada FROM tickets WHERE fecha_salida IS NULL`
+export async function consultaFechaEntradaTicket(id: number) {
+  const db = await getDb();
+  const [{ fecha_entrada }] = await db.select<{ fecha_entrada: string }[]>(
+    `SELECT fecha_entrada FROM tickets WHERE id = ?`,
+    [id]
+  );
+  return fecha_entrada;
+}
+
+export async function registrarPago(idTicket: number, total: number) {
+  const db = await getDb();
+  const fechaSalida = new Date().toISOString();
+
+  await db.execute(
+    `UPDATE tickets SET fecha_salida = ?, total = ? WHERE id = ?`,
+    [fechaSalida, total, idTicket]
+  );
+}
+
+export async function obtenerTicket(id: number): Promise<{
+  id: number;
+  fecha_entrada: string;
+  fecha_salida: string | null;
+  total: number | null;
+}> {
+  const db = await getDb();
+  const result = await db.select<any[]>(
+    `SELECT id, fecha_entrada, fecha_salida, total FROM tickets WHERE id = ? LIMIT 1`,
+    [id]
   );
 
-  return activos;
+  return result[0];
 }
+
 
 export async function obtenerTicketsDelDia() {
   const db = await getDb();
@@ -230,4 +276,3 @@ export async function obtenerTicketsDelDia() {
 
   return { tickets, total };
 }
-

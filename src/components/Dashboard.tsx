@@ -27,35 +27,48 @@ import {
     const [resumen, setResumen] = useState({ total: 0, transacciones: 0 });
     const [productosBajos, setProductosBajos] = useState(0);
     const [masVendidos, setMasVendidos] = useState<any[]>([]);
-    const [monto, setMonto] = useState<number | null>(null);
+    //const [monto, setMonto] = useState<number | null>(null);
     const montoFijo = 5;
     
     const registrarUsoBaño = async () => {
 
-        if (monto === null) {
+        /*if (monto === null) {
           alert('Por favor, ingrese un monto válido.');
           return;
-        }
+        }*/
     
-        const fechaHora = new Date().toISOString();
+        const fechaHora = new Date().toISOString().slice(0, 10);
         await registrarBaño(fechaHora, montoFijo);
         alert('Uso del baño registrado correctamente.');
       };
 
     useEffect(() => {
-      const cargarDatos = async () => {
-        const [res, bajos, masVend] = await Promise.all([
-          obtenerResumenDelDia(),
-          contarProductosBajos(),
-          obtenerProductosMasVendidos(),
-        ]);
-        setResumen(res);
-        setProductosBajos(bajos);
-        setMasVendidos(masVend);
-      };
-  
-      cargarDatos();
-    }, []);
+  const cargarDatos = async () => {
+    try {
+      const res = await obtenerResumenDelDia();
+      setResumen(res);
+    } catch (e) {
+      console.error('Error en obtenerResumenDelDia:', e);
+    }
+
+    try {
+      const bajos = await contarProductosBajos();
+      setProductosBajos(bajos);
+    } catch (e) {
+      console.error('Error en contarProductosBajos:', e);
+    }
+
+    try {
+      const masVend = await obtenerProductosMasVendidos();
+      setMasVendidos(masVend);
+    } catch (e) {
+      console.error('Error en obtenerProductosMasVendidos:', e);
+    }
+  };
+
+  cargarDatos();
+}, []);
+
 
     return (
       <div className="p-6">

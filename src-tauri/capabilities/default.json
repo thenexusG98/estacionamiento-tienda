@@ -48,8 +48,11 @@
     {
       "identifier": "fs:allow-exists",
       "allow": [
-        { "path": "$APPDATA/databases/*" }
+        {
+          "path": "$APPDATA/databases/*"
+        }
       ]
-    }
+    },
+    "dialog:default"
   ]
 }
