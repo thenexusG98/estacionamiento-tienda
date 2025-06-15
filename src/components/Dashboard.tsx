@@ -24,7 +24,9 @@ import {
   });
   
   export default function Dashboard({ setSection }: { setSection: (section: string) => void }) {
-    const [resumen, setResumen] = useState({ total: 0, transacciones: 0 });
+    const [resumen, setResumen] = useState({ total: 0,  transaccion: 0 });
+    console.log('Resumen del día:', resumen.transaccion);
+    
     const [productosBajos, setProductosBajos] = useState(0);
     const [masVendidos, setMasVendidos] = useState<any[]>([]);
     //const [monto, setMonto] = useState<number | null>(null);
@@ -94,7 +96,7 @@ import {
             icon={<FaShoppingCart className="text-green-600 text-xl" />}
             bgColor="bg-green-100"
             title="Transacciones"
-            value={resumen.transacciones.toString()}
+            value={(resumen.transaccion || 0).toFixed(2)}
             subtitle="Comparativo no implementado"
           />
           <SummaryCard

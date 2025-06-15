@@ -156,6 +156,42 @@ export async function obtenerVentas() {
   
   export async function obtenerResumenDelDia() {
     const db = await getDb();
+  const fecha = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const tickets = await db.select<{ 
+    total: number | null,
+    transacciones: number | null;
+   }[]>(
+    `SELECT SUM(total) as total, 
+    COUNT(id) AS transacciones
+     FROM tickets WHERE DATE(fecha_salida) = ?`, [fecha]
+  );
+  const baños = await db.select<{ total: number | null,
+    transacciones: number | null;
+   }[]>(
+    `SELECT SUM(monto) as total, 
+    COUNT(id) AS transacciones
+     FROM baños WHERE fecha_hora = ?`, [fecha]
+  );
+  const ventas_totales = await db.select<{ total: number | null,
+    transacciones: number | null;
+   }[]>(
+    `SELECT SUM(total) as total, 
+    COUNT(id) AS transacciones
+     FROM ventas_totales WHERE fecha = ?`, [fecha]
+  );
+
+  const totalTickets = tickets[0]?.total || 0;
+  const totalBanos = baños[0]?.total || 0;
+  const totalVentas = ventas_totales[0]?.total || 0;
+
+  const transaccionTickets = tickets[0]?.transacciones || 0;
+  const transaccionBanos = baños[0]?.transacciones || 0;
+  const transaccionVentas = ventas_totales[0]?.transacciones || 0;
+
+  return { total: totalTickets + totalBanos + totalVentas, 
+            transaccion: transaccionTickets + transaccionBanos + transaccionVentas };
+    /*const db = await getDb();
   
     const hoy = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
   
@@ -170,7 +206,7 @@ export async function obtenerVentas() {
       [`${hoy}%`]
     );
   
-    return { total, transacciones };
+    return { total, transacciones };*/
   }
   
   export async function contarProductosBajos(threshold = 5) {
