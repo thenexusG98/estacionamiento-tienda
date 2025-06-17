@@ -1,7 +1,7 @@
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import type { TDocumentDefinitions } from 'pdfmake/interfaces';
-import { generarCodigoBarrasBase64 } from '../lib/Functions';
+import { generarCodigoBarrasBase64 } from './Functions';
 
 pdfMake.vfs = pdfFonts.vfs;
 pdfMake.fonts = {
@@ -17,6 +17,7 @@ import printjs from 'print-js';
 
 interface CreatePdfProps {
     id: string | number; // Asegúrate de que id sea un string o number
+    placasFormatted: string; // Placas del vehículo
     //content: any;
     pageSize?: { width: number; height: number };
     pageMargins?: [number, number, number, number];
@@ -36,7 +37,7 @@ interface CreatePdfProps {
     props: CreatePdfProps, // donde CreatePdfProps incluye `id`
     output: OutputType = 'print'
   ) => {
-    const { id } = props;
+    const { id, placasFormatted } = props;
     const barcodeBase64 = await generarCodigoBarrasBase64(id.toString());
     try {
     
@@ -55,14 +56,19 @@ interface CreatePdfProps {
               margin: [0, 0, 0, 0],
             },
             {
-              text: `Fecha: ${new Date().toLocaleString()}`,
+              text: `${new Date().toLocaleString()}`,
               alignment: 'center',
-              fontSize: 8,
+              fontSize: 7,
             },
             {
                 text: `Id: ${id}`,
                 alignment: 'center',
-                fontSize: 8,
+                fontSize: 7,
+            },
+            {
+                text: `Placas: ${placasFormatted}`,
+                alignment: 'center',
+                fontSize: 7,
             },
             {
                 image: barcodeBase64,
@@ -73,7 +79,7 @@ interface CreatePdfProps {
             {
               text: 'Gracias por su visita',
               alignment: 'center',
-              fontSize: 8,
+              fontSize: 9,
               margin: [0, 0, 0, 0],
             },
           ],

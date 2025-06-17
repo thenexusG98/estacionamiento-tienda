@@ -53,13 +53,12 @@ export async function getDb() {
     await db.execute(`
       CREATE TABLE IF NOT EXISTS tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        placas TEXT NOT NULL,
         fecha_entrada TEXT NOT NULL,
         fecha_salida TEXT,
         total REAL
       )
     `);
-
-
 
   return db;
 }
@@ -231,12 +230,12 @@ export async function obtenerVentas() {
     
 }
 
-export async function registrarTicketEstacionamiento(fecha_entrada: string) {
+export async function registrarTicketEstacionamiento(fecha_entrada: string, placas: string) {
   const db = await getDb();
 
   await db.execute(
-    `INSERT INTO tickets (fecha_entrada) VALUES (?)`,
-    [fecha_entrada]
+    `INSERT INTO tickets (fecha_entrada, placas) VALUES (?, ?)`,
+    [fecha_entrada, placas]
   );
 
   const [{ id }] = await db.select<{ id: number }[]>(`SELECT last_insert_rowid() AS id`);
