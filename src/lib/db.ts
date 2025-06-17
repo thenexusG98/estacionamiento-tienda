@@ -190,22 +190,6 @@ export async function obtenerVentas() {
 
   return { total: totalTickets + totalBanos + totalVentas, 
             transaccion: transaccionTickets + transaccionBanos + transaccionVentas };
-    /*const db = await getDb();
-  
-    const hoy = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-  
-    const [{ total = 0 } = {}] = await db.select<{ total: number }[]>(
-      `SELECT SUM(total) as total FROM ventas_totales WHERE fecha LIKE ?`,
-      [`${hoy}%`]
-    );
-    console.log(`Total del día: ${total}`);
-  
-    const [{ transacciones = 0 } = {}] = await db.select<{ transacciones: number }[]>(
-      `SELECT COUNT(*) as transacciones FROM ventas_totales WHERE fecha LIKE ?`,
-      [`${hoy}%`]
-    );
-  
-    return { total, transacciones };*/
   }
   
   export async function contarProductosBajos(threshold = 5) {
@@ -317,4 +301,47 @@ export async function obtenerTicketsDelDia() {
   return {  tickets: tickets[0].total || 0,
     baños: baños[0].total || 0,
     ventas_totales: ventas_totales[0].total || 0, };
+}
+
+export async function obtenerVentasPorDia(fecha: string) {
+  const db = await getDb();
+
+  const ventasBaños = await db.select<{
+    id: number;
+    fecha_hora: string;
+    monto: number;
+  }[]>(
+    `SELECT id, fecha_hora, monto FROM baños WHERE fecha_hora = ?`,
+    [fecha]
+  );
+
+  const ventasEstacionamiento = await db.select<{
+    id: number;
+    fecha_salida: string;
+    placas: string;
+    total: number;
+  }[]>(
+    `SELECT id, DATE(fecha_salida) as fecha_salida, placas, total FROM tickets WHERE DATE(fecha_salida) = ?`,
+    [fecha]
+  );
+
+  const ventasTienda = await db.select<{
+      id: number;
+      fecha: string;
+      producto: string;
+      cantidad: number;
+      total: number;
+    }[]>(`
+      SELECT 
+        v.id,
+        vt.fecha,
+        v.producto,
+        v.cantidad,
+        v.total
+      FROM ventas v
+      JOIN ventas_totales vt ON v.venta_id = vt.id
+      where vt.fecha = ?
+    `, [fecha]);
+
+  return {baños: ventasBaños, estacionamiento: ventasEstacionamiento, tienda: ventasTienda};
 }
