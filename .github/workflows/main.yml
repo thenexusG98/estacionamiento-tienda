@@ -36,16 +36,27 @@ jobs:
         with:
           node-version: 20
 
+      # Limpieza profunda antes de instalar dependencias
+      - name: Limpieza profunda de Rust y Node
+        run: |
+          cd src-tauri
+          rm -rf target
+          rm -f Cargo.lock
+          cargo update
+          cargo clean
+          cd ..
+          rm -rf node_modules
+
       - name: Instala dependencias de Node.js
+        working-directory: src-tauri
         run: npm install
 
       - name: Instala Tauri CLI
+        working-directory: src-tauri
         run: npm install -g @tauri-apps/cli
 
-      - name: Limpia cache de Rust
-        run: cd src-tauri && cargo clean
-
       - name: Compila el instalador MSI (Tauri build)
+        working-directory: src-tauri
         run: npm run tauri build
 
       - name: Genera latest.json con la versión del tag
@@ -55,8 +66,8 @@ jobs:
 
       - name: Verifica archivos
         run: |
-          ls -lh src-tauri/target/release/bundle/msi/
-          cat src-tauri/latest.json
+          ls -lh src-tauri/target/release/bundle/msi/ || true
+          [ -f src-tauri/latest.json ] && cat src-tauri/latest.json || echo "No latest.json"
 
       - name: Sube archivos a GitHub Release
         uses: softprops/action-gh-release@v2
