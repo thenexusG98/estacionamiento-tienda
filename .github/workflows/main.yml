@@ -14,12 +14,15 @@ jobs:
       - name: Clona el repositorio
         uses: actions/checkout@v4
 
-      - name: Instala Rust y dependencias de sistema para Tauri
+      - name: Instala dependencias de sistema para Tauri
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev squashfs-tools
+          sudo apt-get install -y libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev squashfs-tools pkg-config
 
-      - name: Configura Node.js
+      - name: Instala Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Instala Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -30,12 +33,14 @@ jobs:
       - name: Instala Tauri CLI
         run: npm install -g @tauri-apps/cli
 
+      - name: Limpia cache de Rust
+        run: cargo clean
+
       - name: Compila el instalador MSI (Tauri build)
         run: npm run tauri build
 
       - name: Genera latest.json con la versión del tag
-        run: |
-          node scripts/generate-latest-json.js
+        run: node scripts/generate-latest-json.js
         env:
           APP_VERSION: ${{ github.ref_name }}
 
