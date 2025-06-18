@@ -1,4 +1,4 @@
-name: Publicar release
+name: Publicar release de estacionamiento
 
 on:
   push:
@@ -13,12 +13,28 @@ jobs:
       - name: Clona el repositorio
         uses: actions/checkout@v4
 
-      - name: Verifica que existen los archivos necesarios
+      - name: Configura Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instala dependencias si necesitas (opcional)
+        run: |
+          npm install
+
+      - name: Genera latest.json con la versión del tag
+        run: |
+          mkdir -p scripts
+          node scripts/generate-latest-json.js
+        env:
+          APP_VERSION: ${{ github.ref_name }}
+
+      - name: Verifica archivos
         run: |
           ls -lh src-tauri/target/release/bundle/msi/
-          ls -lh src-tauri/latest.json
+          cat src-tauri/latest.json
 
-      - name: Subir .msi y latest.json a la Release
+      - name: Sube archivos a GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
