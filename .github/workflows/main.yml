@@ -17,7 +17,16 @@ jobs:
       - name: Instala dependencias de sistema para Tauri
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev squashfs-tools pkg-config
+          sudo apt-get install -y \
+            libwebkit2gtk-4.0-dev \
+            libsoup-3.0-dev \
+            build-essential \
+            curl \
+            wget \
+            libssl-dev \
+            libgtk-3-dev \
+            squashfs-tools \
+            pkg-config
 
       - name: Instala Rust
         uses: dtolnay/rust-toolchain@stable
