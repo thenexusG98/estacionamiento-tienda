@@ -1,6 +1,7 @@
 name: Publicar release de estacionamiento
 
 on:
+  workflow_dispatch:  # Permite ejecución manual desde GitHub Actions
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
