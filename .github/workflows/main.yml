@@ -25,6 +25,10 @@ jobs:
           VERSION=$(jq -r .version package.json)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
+      - name: Configura git para push autenticado
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+
       - name: Crea tag si no existe
         run: |
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
