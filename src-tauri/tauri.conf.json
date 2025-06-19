@@ -48,7 +48,7 @@
       "https://github.com/thenexusG98/estacionamiento-tienda/releases/latest/download/latest.json"
     ],
     "dialog": true,
-    "pubkey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjkXWs+1LAdTmKKr36Y5StYHOGQanEnRGa3Ek4831nn2W4z+0o+yOKYjbAdT2IJLpgB7/VVgpwN93m0NdoVrpjpBd+QMO2ocaaewF59Z1yoPEFaXCJZa9yI5PHhRG7svUuKS8biPugRo8dRkbZifGPLALYXlVOgJGMyNpl1itVMFOTUV+lgSb3uAtCk3F0LdKE3DWvscuEQ5CoEQfoLMuOXTZTM+3bpzmI06gL5IhnC14Qedf9y4hRzgtHlqHTl7oD+RnAR3zDuzHYSYuvEG8Wtb+Vv1qapHF+XNEme7ofGB0D/jPfx96+kuWw5JnNW+UFX/2Lb8O8S5o2G17sMTllQIDAQAB"
+    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApCE1cAw9dGE9+AjZxfhQFcLPdupuJ95ObEez7jngqACxJ/ballGxts3TI1eEMhxhm6cabWH9+qntLVnaqhiUfYtqNBUMSZ3JxwMx/2QG4NzAMhzApF4gZV5GcrevTREYXVsggSzJRfUnV0adCz8Tt7uloQ6ydF06PIZsni1ughUOuqROgE1+eqAUtUDCiwrBgjJEJ7OxzwjlLndEz7HkmYZMLQaIUSiUbrgRPiweF4YZb1pfn2lUDiX6gu3r1p01p/t2KHdcb3JAc+gmUN6DdkQDeSPRc8TtMkRG15fiU88AT9Hi6PX49gprXQP04RqcYPqi8rlBgEN59lZNU0ZRTAgMBAAE=\n-----END PUBLIC KEY-----"
   }
 }
 }
