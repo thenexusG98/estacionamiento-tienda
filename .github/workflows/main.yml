@@ -3,6 +3,8 @@ name: Publicar release de estacionamiento
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
 
@@ -55,6 +57,16 @@ jobs:
       - name: Instala Tauri CLI
         working-directory: src-tauri
         run: npm install -g @tauri-apps/cli
+
+      - name: Debug TAURI_SIGNING_PRIVATE_KEY
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY NO está presente. El secreto no fue leído."
+            exit 1
+          else
+            echo "TAURI_SIGNING_PRIVATE_KEY está presente."
+            head -n 2 <<< "$TAURI_SIGNING_PRIVATE_KEY"
+          fi
 
       - name: Compila el instalador MSI (Tauri build)
         working-directory: src-tauri
