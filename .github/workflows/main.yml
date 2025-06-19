@@ -11,6 +11,8 @@ on:
 jobs:
   release:
     runs-on: ubuntu-22.04
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
 
     steps:
       - name: Clona el repositorio
