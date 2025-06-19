@@ -43,15 +43,16 @@
         "filePath": "sqlite:data.db"
       }
     },
-     "updater": {
-        "windows": {
-          "installMode": "passive"
-        },
-        "pubkey": "CONTENT FROM PUBLICKEY.PEM",
-        "endpoints": [
-          "https://github.com/user/repo/releases/latest/download/latest.json"
-        ]
-    }
+     "plugins": {
+        "updater": {
+          "endpoints": [
+            "https://github.com/thenexusG98/estacionamiento-tienda/releases/latest/download/latest.json"
+          ],
+          "dialog": true,
+          "pubkey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjkXWs+1LAdTmKKr36Y5StYHOGQanEnRGa3Ek4831nn2W4z+0o+yOKYjbAdT2IJLpgB7/VVgpwN93m0NdoVrpjpBd+QMO2ocaaewF59Z1yoPEFaXCJZa9yI5PHhRG7svUuKS8biPugRo8dRkbZifGPLALYXlVOgJGMyNpl1itVMFOTUV+lgSb3uAtCk3F0LdKE3DWvscuEQ5CoEQfoLMuOXTZTM+3bpzmI06gL5IhnC14Qedf9y4hRzgtHlqHTl7oD+RnAR3zDuzHYSYuvEG8Wtb+Vv1qapHF+XNEme7ofGB0D/jPfx96+kuWw5JnNW+UFX/2Lb8O8S5o2G17sMTllQIDAQAB"
+        }
+      }
+
   }
 }
 

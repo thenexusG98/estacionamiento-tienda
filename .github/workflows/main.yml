@@ -5,8 +5,6 @@ on:
   push:
     branches:
       - main
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   release:
@@ -17,6 +15,27 @@ jobs:
     steps:
       - name: Clona el repositorio
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Necesario para poder crear y subir tags
+
+      # AUTOTAG: Lee la versión de package.json y crea/sube el tag si no existe
+      - name: Lee versión de package.json
+        id: version
+        run: |
+          VERSION=$(jq -r .version package.json)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Crea tag si no existe
+        run: |
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "El tag v$VERSION ya existe, no se crea uno nuevo."
+          else
+            git config user.name "thenexusG98"
+            git config user.email "capitanuri@gmail.com"
+            git tag "v$VERSION"
+            git push origin "v$VERSION"
+            echo "Tag v$VERSION creado y subido."
+          fi
 
       - name: Instala dependencias de sistema para Tauri
         run: |
