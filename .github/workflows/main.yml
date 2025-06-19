@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
     steps:
       - name: Clona el repositorio
@@ -18,33 +19,60 @@ jobs:
         with:
           fetch-depth: 0   # Necesario para poder crear y subir tags
 
-      - name: Decodifica el secreto para debug (solo para pruebas)
+      # 1. Obtén el último tag y calcula el siguiente
+      - name: Calcula el siguiente tag semver
+        id: semver
         run: |
-          echo "$TAURI_SIGNING_PRIVATE_KEY" | base64 -d | head -n 5
-
-      # AUTOTAG: Lee la versión de package.json y crea/sube el tag si no existe
-      - name: Lee versión de package.json
-        id: version
-        run: |
-          VERSION=$(jq -r .version package.json)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Configura git para push autenticado
-        run: |
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-
-      - name: Crea tag si no existe
-        run: |
-          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
-            echo "El tag v$VERSION ya existe, no se crea uno nuevo."
-          else
-            git config user.name "thenexusG98"
-            git config user.email "capitanuri@gmail.com"
-            git tag "v$VERSION"
-            git push origin "v$VERSION"
-            echo "Tag v$VERSION creado y subido."
+          # Obtén el último tag con formato vX.Y.Z
+          LAST_TAG=$(git tag --list "v*" --sort=-v:refname | head -n 1)
+          if [[ -z "$LAST_TAG" ]]; then
+            LAST_TAG="v0.1.0"
           fi
 
+          # Quita la 'v'
+          LAST_VERSION=${LAST_TAG#v}
+
+          # Separa en partes
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LAST_VERSION"
+
+          # Aumenta el patch
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          NEW_TAG="v$NEW_VERSION"
+
+          echo "LAST_TAG=$LAST_TAG" >> $GITHUB_ENV
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      # 2. Actualiza package.json a la nueva versión (opcional pero recomendado)
+      - name: Actualiza package.json a la nueva versión
+        run: |
+          jq --arg v "$NEW_VERSION" '.version = $v' package.json > tmp.$$.json && mv tmp.$$.json package.json
+          cat package.json
+
+      # 3. Configura git para push autenticado
+      - name: Configura git para push autenticado
+        run: |
+          git config user.name "thenexusG98"
+          git config user.email "capitanuri@gmail.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+
+      # 4. Crea y sube el nuevo tag solo si no existe
+      - name: Crea y sube el nuevo tag si no existe
+        run: |
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "El tag $NEW_TAG ya existe, no se crea uno nuevo."
+          else
+            git add package.json
+            git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "Nada que commitear"
+            git tag "$NEW_TAG"
+            git push origin "$NEW_TAG"
+            git push origin main
+            echo "Tag $NEW_TAG creado y subido."
+          fi
+
+      # Resto de pasos de build y release...
       - name: Instala dependencias de sistema para Tauri
         run: |
           sudo apt-get update
@@ -68,7 +96,6 @@ jobs:
         with:
           node-version: 20
 
-      # Limpieza profunda antes de instalar dependencias
       - name: Limpieza profunda de Rust y Node
         run: |
           cd src-tauri
@@ -104,7 +131,7 @@ jobs:
       - name: Genera latest.json con la versión del tag
         run: node scripts/generate-latest-json.js
         env:
-          APP_VERSION: ${{ github.ref_name }}
+          APP_VERSION: ${{ env.NEW_TAG }}
 
       - name: Verifica archivos
         run: |
@@ -114,6 +141,7 @@ jobs:
       - name: Sube archivos a GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.NEW_TAG }}
           files: |
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/latest.json
