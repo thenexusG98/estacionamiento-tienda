@@ -153,7 +153,7 @@ import {
         </div>
   
         {/* Productos más vendidos (muestra fija por ahora) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-md">
           <h3 className="text-lg font-semibold text-gray-700 mb-4">
             Productos Más Vendidos
@@ -180,11 +180,7 @@ import {
           )}
         </div>
 
-        {/* puedes dejar la otra mitad para ventas de la semana o gráfico */}
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">Ventas de la Semana</h3>
-          <div className="text-gray-500">[Aquí puedes insertar Chart.js]</div>
-        </div>
+
       </div>
       </div>
     );

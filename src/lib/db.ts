@@ -205,17 +205,27 @@ export async function obtenerVentas() {
     COUNT(id) AS transacciones
      FROM ventas_totales WHERE fecha = ?`, [fecha]
   );
+  const paqueteria = await db.select<{ total: number | null,
+    transacciones: number | null;
+   }[]>(
+    `SELECT SUM(monto) as total, 
+    COUNT(id) AS transacciones
+     FROM paqueteria WHERE DATE(fecha_recoleccion) = ?`, [fecha]
+  );
 
   const totalTickets = tickets[0]?.total || 0;
   const totalBanos = baños[0]?.total || 0;
   const totalVentas = ventas_totales[0]?.total || 0;
+  const totalPaqueteria = paqueteria[0]?.total || 0;
 
   const transaccionTickets = tickets[0]?.transacciones || 0;
   const transaccionBanos = baños[0]?.transacciones || 0;
   const transaccionVentas = ventas_totales[0]?.transacciones || 0;
+  const transaccionPaqueteria = paqueteria[0]?.transacciones || 0;
 
-  return { total: totalTickets + totalBanos + totalVentas, 
-            transaccion: transaccionTickets + transaccionBanos + transaccionVentas };
+
+  return { total: totalTickets + totalBanos + totalVentas + totalPaqueteria, 
+            transaccion: transaccionTickets + transaccionBanos + transaccionVentas + transaccionPaqueteria };
   }
   
   export async function contarProductosBajos(threshold = 5) {
