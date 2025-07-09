@@ -158,8 +158,7 @@ interface CreatePdfProps {
     props: CreatePdfPropsPaqueteria, // donde CreatePdfProps incluye `id`
     output: OutputType = 'print'
   ) => {
-    const { id, content } = props;
-    const barcodeBase64 = await generarCodigoBarrasBase64(id.toString());
+    const { content } = props;
     try {
     
       const docDefinition: TDocumentDefinitions = {
@@ -231,7 +230,6 @@ interface CreatePdfProps {
 ): Promise<{ success: boolean; content: string | null; message: string }> => {
   const { id } = props;
   const barcodeBase64 = await generarCodigoBarrasBase64(id.toString());
-  const now = new Date().toLocaleString();
 
   const ticketBase = (titulo: string): Content[] => [
   {

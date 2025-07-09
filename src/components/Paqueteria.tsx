@@ -2,7 +2,6 @@ import { useState } from "react";
 import { registrarEntregaPaquete, registrarRecoleccionPaquete } from "../lib/db";
 import { createPdfPaqueteria } from "../lib/CreateTicket";
 import { TARIFA_PAQUETERIA } from "../lib/Constantes";
-import { generarCodigoBarrasBase64 } from '../lib/Functions';
 
 export default function Paqueteria() {
   const [paqueteId, setPaqueteId] = useState<number | null>(null);
