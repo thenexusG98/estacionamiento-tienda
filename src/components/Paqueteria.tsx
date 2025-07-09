@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { registrarEntregaPaquete, registrarRecoleccionPaquete } from "../lib/db";
-import {createPdf, createPdfPaqueteria} from "../lib/CreateTicket";
+import { createPdfPaqueteria } from "../lib/CreateTicket";
 import { TARIFA_PAQUETERIA } from "../lib/Constantes";
 import { generarCodigoBarrasBase64 } from '../lib/Functions';
 
@@ -10,7 +10,6 @@ export default function Paqueteria() {
   const handleGuardarPaquete = async () => {
     const fecha = new Date().toISOString();
     const id = await registrarEntregaPaquete(fecha);
-    const barcodeBase64 = await generarCodigoBarrasBase64(id.toString());
 
     // Imprimir 2 tickets
     await createPdfPaqueteria({id});

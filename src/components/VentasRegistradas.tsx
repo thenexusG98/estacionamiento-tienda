@@ -11,7 +11,8 @@ export default function VentasRegistradas() {
     tickets: number;
     baños: number;
     ventas_totales: number;
-  }>({ tickets: 0, baños: 0, ventas_totales: 0 });
+    venta_paqueteria: number;
+  }>({ tickets: 0, baños: 0, ventas_totales: 0, venta_paqueteria: 0 });
 
   const [ventasDia, setVentasDia] = useState<{
     baños: { id: number; fecha_hora: string; monto: number }[];
@@ -28,7 +29,12 @@ export default function VentasRegistradas() {
       cantidad: number;
       total: number;
     }[];
-  }>({ baños: [], estacionamiento: [], tienda: [] });
+    paqueteria: {
+      id: number;
+      fecha_recoleccion: string ;
+      monto: number;
+    }[];
+  }>({ baños: [], estacionamiento: [], tienda: [], paqueteria: [] });
 
   useEffect(() => {
     const cargarVentas = async () => {
@@ -42,7 +48,7 @@ export default function VentasRegistradas() {
     cargarVentas();
   }, [fechaSeleccionada]);
 
-  const ventaTotal = datos.tickets + datos.baños + datos.ventas_totales;
+  const ventaTotal = datos.tickets + datos.baños + datos.ventas_totales + datos.venta_paqueteria;
 
   const datosTransformados = [
     {
@@ -59,6 +65,11 @@ export default function VentasRegistradas() {
       fecha: fechaSeleccionada,
       categoria: "tienda",
       total: datos.ventas_totales,
+    },
+    {
+      fecha: fechaSeleccionada,
+      categoria: "paqueteria",
+      total: datos.venta_paqueteria,
     },
   ];
 
@@ -80,6 +91,12 @@ export default function VentasRegistradas() {
       categoria: "tienda",
       descripcion: `${item.producto} x${item.cantidad}`,
       total: item.total,
+    })),
+    ...ventasDia.paqueteria.map((item) => ({
+      fecha: item.fecha_recoleccion,
+      categoria: "paqueteria",
+      descripcion: `Paquete #${item.id}`,
+      total: item.monto,
     })),
   ];
 

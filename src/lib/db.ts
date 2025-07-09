@@ -328,10 +328,20 @@ export async function obtenerTicketsDelDia(fechaDia: string) {
     [fechaDia]
   );
 
+  const ventaPaqueteria = await db.select<{
+    total: number | null;
+  }[]>(
+    `SELECT SUM(monto) as total
+      FROM paqueteria 
+      WHERE DATE(fecha_recoleccion) = ?`,
+    [fechaDia]
+  );
+
   return {
     tickets: tickets[0].total || 0,
     baños: baños[0].total || 0,
     ventas_totales: ventas_totales[0].total || 0,
+    venta_paqueteria: ventaPaqueteria[0].total || 0
   };
 }
 
@@ -375,5 +385,15 @@ export async function obtenerVentasPorDia(fecha: string) {
       where vt.fecha = ?
     `, [fecha]);
 
-  return {baños: ventasBaños, estacionamiento: ventasEstacionamiento, tienda: ventasTienda};
+    const ventasPaqueteria = await db.select<{
+      id: number;
+      fecha_recoleccion: string;
+      monto: number;
+    }[]>(`
+      SELECT id, DATE(fecha_recoleccion), monto 
+      FROM paqueteria 
+      WHERE DATE(fecha_recoleccion) = ?`, [fecha]);
+
+
+  return {baños: ventasBaños, estacionamiento: ventasEstacionamiento, tienda: ventasTienda, paqueteria: ventasPaqueteria};
 }
