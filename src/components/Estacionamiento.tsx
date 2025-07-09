@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   registrarPago,
   registrarTicketEstacionamiento,
@@ -17,6 +17,28 @@ export default function Estacionamiento() {
   const [fee, setFee] = useState<number | null>(null);
   const [generando, setGenerando] = useState(false);
   const [idTicket, setIdTicket] = useState<number | null>(null);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleScannerInput = (e: KeyboardEvent) => {
+      console.log("Key pressed:", e.key);
+      
+      if (e.key === "Enter") {
+        const value = inputRef.current?.value;
+        if (value && !isNaN(Number(value))) {
+          checkTicket(Number(value));
+          if (inputRef.current) inputRef.current.value = "";
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleScannerInput);
+
+    return () => {
+      window.removeEventListener("keydown", handleScannerInput);
+    };
+  }, []); 
 
   const handleGenerarTicket = async () => {
     if (!placas) {
@@ -82,6 +104,8 @@ export default function Estacionamiento() {
     value1,
     subtitle,
     value2,
+    subtitle2,
+    value3,
     actionLabel,
     onAction,
   }: any) {
@@ -97,6 +121,10 @@ export default function Estacionamiento() {
                 <span>{subtitle}</span>
               </p>
               <p className="text-2xl font-bold text-gray-800">{value2}</p>
+              <p className="text-xl text-black flex items-center mt-2">
+                <span>{subtitle2}</span>
+              </p>
+              <p className="text-2xl font-bold text-gray-800">{value3}</p>
             </div>
           </div>
           {onAction && (
@@ -135,12 +163,24 @@ export default function Estacionamiento() {
       </button>
 
       <div className="mt-6 ">
+        
         <label className="block text-gray-700 mb-2">ID del Ticket</label>
+
+      
         <input
-          type="number"
+          ref={inputRef}
+          type="text"
+          value={ticketId ?? ""}
           onChange={(e) => setTicketId(Number(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && ticketId) {
+              checkTicket(ticketId);
+              setTicketId(null); // limpia después
+            }
+          }}
           className="border px-4 py-2 rounded w-full mb-4"
         />
+        
         <button
           onClick={() => ticketId && checkTicket(ticketId)}
           className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
@@ -159,6 +199,8 @@ export default function Estacionamiento() {
               value1={elapsedTime}
               subtitle="Total a pagar: "
               value2={`$${fee}`}
+              subtitle2="ID del Ticket: "
+              value3={idTicket.toString()}
               actionLabel="Registrar pago"
               onAction={async () => {
                 if (idTicket !== null && fee !== null) {

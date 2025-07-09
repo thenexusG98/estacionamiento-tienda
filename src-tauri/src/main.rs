@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use tauri_plugin_fs::init as init_fs;
 
 fn main() {
     tauri::Builder::<tauri::Wry>::default()
