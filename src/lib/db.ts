@@ -60,7 +60,33 @@ export async function getDb() {
       )
     `);
 
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS paqueteria (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha_entrega TEXT NOT NULL,
+        fecha_recoleccion TEXT,
+        monto REAL
+    )
+    `);
+
   return db;
+}
+
+export async function registrarEntregaPaquete(fecha_entrega: string) {
+  const db = await getDb();
+  const result = await db.execute(
+    `INSERT INTO paqueteria (fecha_entrega) VALUES (?)`,
+    [fecha_entrega]
+  );
+  return result.lastInsertId as number;
+}
+
+export async function registrarRecoleccionPaquete(id: number, fecha: string, monto: number) {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE paqueteria SET fecha_recoleccion = ?, monto = ? WHERE id = ?`,
+    [fecha, monto, id]
+  );
 }
 
 export async function obtenerVentas() {

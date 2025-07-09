@@ -14,7 +14,8 @@ import {
     FaClipboardList,
     FaChartPie,
     FaStar,
-    FaToilet
+    FaToilet,
+    FaArchive
   } from 'react-icons/fa';
   
   const currentDate = new Date().toLocaleDateString('es-MX', {
@@ -141,6 +142,12 @@ import {
               label="Registrar Baño"
               color="bg-blue-400"
               onClick={() => registrarUsoBaño()}
+            />
+            <QuickAccess
+              icon={<FaArchive />}
+              label="Paqueteria"
+              color="bg-gray-600"
+              onClick={() => setSection('paqueteria')}
             />
           </div>
         </div>

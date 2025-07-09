@@ -6,7 +6,7 @@ import {
   consultaFechaEntradaTicket,
   obtenerTicket,
 } from "../lib/db";
-import createPdf from "../lib/CreateTicket";
+import {createTicketEstacionamiento} from "../lib/CreateTicket";
 
 import { FaExclamationTriangle } from "react-icons/fa";
 
@@ -53,7 +53,7 @@ export default function Estacionamiento() {
       const fecha = new Date();
       const id = await registrarTicketEstacionamiento(fecha.toISOString(), placas);
       const placasFormatted = placas.toUpperCase();
-      await createPdf({ id, placasFormatted }, "print");
+      await createTicketEstacionamiento({ id, placasFormatted }, "print");
       alert(`Ticket generado e impreso. ID: ${id}`);
     } catch (error) {
       console.error("Error al generar ticket:", error);

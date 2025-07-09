@@ -7,6 +7,7 @@ import Reportes from './components/Reportes';
 import VentasRegistradas from './components/VentasRegistradas';
 import Estacionamiento from './components/Estacionamiento';
 import Baños from './components/Baños';
+import Paqueteria from './components/Paqueteria';
 
 import { useState } from 'react';
 import './App.css'
@@ -26,6 +27,7 @@ export default function App() {
         {section === 'ventas-registradas' && <VentasRegistradas />}
         {section === 'estacionamiento' && <Estacionamiento />}
         {section === 'baños' && <Baños />}
+        {section === 'paqueteria' && <Paqueteria />}
       </div>
     </div>
   );

@@ -1,0 +1,66 @@
+import { useState } from "react";
+import { registrarEntregaPaquete, registrarRecoleccionPaquete } from "../lib/db";
+import {createPdf, createPdfPaqueteria} from "../lib/CreateTicket";
+import { TARIFA_PAQUETERIA } from "../lib/Constantes";
+import { generarCodigoBarrasBase64 } from '../lib/Functions';
+
+export default function Paqueteria() {
+  const [paqueteId, setPaqueteId] = useState<number | null>(null);
+
+  const handleGuardarPaquete = async () => {
+    const fecha = new Date().toISOString();
+    const id = await registrarEntregaPaquete(fecha);
+    const barcodeBase64 = await generarCodigoBarrasBase64(id.toString());
+
+    // Imprimir 2 tickets
+    await createPdfPaqueteria({id});
+
+    alert(`✅ Paquete registrado. Ticket ID: ${id}`);
+  };
+
+  const handleRecolectarPaquete = async () => {
+    if (!paqueteId) return alert("Ingresa un ID válido");
+
+    const fecha = new Date().toISOString();
+    await registrarRecoleccionPaquete(paqueteId, fecha, TARIFA_PAQUETERIA);
+
+    alert("✅ Recolección registrada correctamente");
+    setPaqueteId(null);
+  };
+
+  return (
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-4">Módulo de Paquetería</h2>
+
+      <button
+        onClick={handleGuardarPaquete}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mb-6"
+      >
+        Guardar paquete
+      </button>
+
+      <div>
+        <label>ID del paquete (lectura del ticket):</label>
+
+        <input
+          type="number"
+          value={paqueteId || ""}
+          onChange={(e) => setPaqueteId(Number(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && paqueteId) {
+                handleRecolectarPaquete();
+                setPaqueteId(null); // limpia después
+            }
+          }}
+          className="border px-3 py-2 rounded w-full mb-4"
+        />
+        <button
+          onClick={handleRecolectarPaquete}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+          Registrar recolección
+        </button>
+      </div>
+    </div>
+  );
+}
