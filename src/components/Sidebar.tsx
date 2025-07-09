@@ -65,7 +65,7 @@ export default function Sidebar({ setSection }: SidebarProps) {
             <span className="font-bold text-lg">JD</span>
           </div>
           <div className="ml-3">
-            <p className="font-medium">Juan Díaz</p>
+            <p className="font-medium">Admin</p>
             <p className="text-xs text-blue-200">Administrador</p>
           </div>
         </div>
