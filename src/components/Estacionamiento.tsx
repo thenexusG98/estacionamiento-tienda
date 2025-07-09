@@ -10,6 +10,8 @@ import createPdf from "../lib/CreateTicket";
 
 import { FaExclamationTriangle } from "react-icons/fa";
 
+import { TARIFA_ESTACIONAMIENTO_POR_HORA } from "../lib/Constantes";
+
 export default function Estacionamiento() {
   const [ticketId, setTicketId] = useState<number | null>(null);
   const [placas, setPlacas] = useState<string | null>(null);
@@ -87,7 +89,7 @@ export default function Estacionamiento() {
     const diffMs = endTime.getTime() - startTime.getTime();
     const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
 
-    const ratePerHour = 10; // Example rate
+    const ratePerHour = TARIFA_ESTACIONAMIENTO_POR_HORA; // Example rate
     const totalFee = diffHours * ratePerHour;
 
     await registrarSalidaTicketEstacionamiento(id, endTime.toISOString());

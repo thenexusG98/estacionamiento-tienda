@@ -272,35 +272,41 @@ export async function obtenerTicket(id: number): Promise<{
 }
 
 
-export async function obtenerTicketsDelDia() {
+export async function obtenerTicketsDelDia(fechaDia: string) {
   const db = await getDb();
-  const fecha = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
   const tickets = await db.select<{
     total: number | null;
   }[]>(
     `SELECT SUM(total) as total
-      FROM tickets
-      WHERE DATE(fecha_salida) = ?`, [fecha]
+     FROM tickets
+     WHERE DATE(fecha_salida) = ?`,
+    [fechaDia]
   );
 
   const baños = await db.select<{
     total: number | null;
   }[]>(
     `SELECT SUM(monto) as total 
-    FROM baños WHERE fecha_hora = ?`, [fecha]
+     FROM baños 
+     WHERE DATE(fecha_hora) = ?`,
+    [fechaDia]
   );
 
   const ventas_totales = await db.select<{
     total: number | null;
   }[]>(
     `SELECT SUM(total) as total 
-    FROM ventas_totales WHERE fecha = ?`, [fecha]
+     FROM ventas_totales 
+     WHERE DATE(fecha) = ?`,
+    [fechaDia]
   );
 
-  return {  tickets: tickets[0].total || 0,
+  return {
+    tickets: tickets[0].total || 0,
     baños: baños[0].total || 0,
-    ventas_totales: ventas_totales[0].total || 0, };
+    ventas_totales: ventas_totales[0].total || 0,
+  };
 }
 
 export async function obtenerVentasPorDia(fecha: string) {

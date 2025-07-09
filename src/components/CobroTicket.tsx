@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getDb } from '../lib/db';
+import { TARIFA_ESTACIONAMIENTO_POR_HORA} from '../lib/Constantes';
 
 export default function CobroTicket() {
   const [ticketId, setTicketId] = useState('');
@@ -21,7 +22,7 @@ export default function CobroTicket() {
     const salida = new Date();
     const ms = salida.getTime() - entrada.getTime();
     const minutos = Math.ceil(ms / (1000 * 60));
-    const total = Math.ceil(minutos / 30) * 10; // $10 cada 30 minutos
+    const total = Math.ceil(minutos / 30) * TARIFA_ESTACIONAMIENTO_POR_HORA; // $15 cada 30 minutos
 
     setInfo({ tiempo: `${minutos} minutos`, total });
   };

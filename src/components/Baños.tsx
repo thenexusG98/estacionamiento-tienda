@@ -1,7 +1,8 @@
 import { registrarBaño } from '../lib/db';
+import { TARIFA_BAÑO} from '../lib/Constantes';
 
 export default function Baños() {
-  const montoFijo = 5; // Monto fijo para el uso del baño
+  const montoFijo = TARIFA_BAÑO; // Monto fijo para el uso del baño
 
   const registrarUsoBaño = async () => {
     const fechaHora = new Date().toISOString().slice(0, 10);
