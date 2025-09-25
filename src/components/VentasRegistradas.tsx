@@ -222,20 +222,7 @@ export default function VentasRegistradas() {
         className="border border-gray-300 px-3 py-2 rounded w-full md:w-2/3"
           />
         </div>
-        <div className="flex items-end gap-4">
-          <button
-        //onClick={}
-        className="text-sm bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-900"
-          >
-        Descargar turno matutino
-          </button>
-          <button
-        //onClick={}
-        className="text-sm bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-900"
-          >
-        Descargar turno vespertino
-          </button>
-        </div>
+
       </div>
       {ventaTotal === 0 ? (
         <div className="bg-white shadow rounded-lg p-4 mb-4 w-5/6 items-center mx-auto">
