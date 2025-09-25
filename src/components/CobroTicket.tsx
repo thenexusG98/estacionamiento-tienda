@@ -29,7 +29,10 @@ export default function CobroTicket() {
 
   const registrarSalida = async () => {
     const db = await getDb();
-    const fechaSalida = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const fecha = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const hora = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+    const fechaSalida = `${fecha} ${hora}`;
     await db.execute(
       `UPDATE tickets SET fecha_salida = ?, total = ? WHERE id = ?`,
       [fechaSalida, info?.total, ticketId]

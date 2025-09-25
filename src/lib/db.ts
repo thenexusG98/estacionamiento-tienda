@@ -83,6 +83,7 @@ export async function registrarEntregaPaquete(fecha_entrega: string) {
 
 export async function registrarRecoleccionPaquete(id: number, fecha: string, monto: number) {
   const db = await getDb();
+  
   await db.execute(
     `UPDATE paqueteria SET fecha_recoleccion = ?, monto = ? WHERE id = ?`,
     [fecha, monto, id]
@@ -181,7 +182,7 @@ export async function obtenerVentas() {
   
   export async function obtenerResumenDelDia() {
     const db = await getDb();
-  const fecha = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const fecha = new Date().toISOString(); // YYYY-MM-DD
 
   const tickets = await db.select<{ 
     total: number | null,
@@ -284,7 +285,10 @@ export async function consultaFechaEntradaTicket(id: number) {
 
 export async function registrarPago(idTicket: number, total: number) {
   const db = await getDb();
-  const fechaSalida = new Date().toISOString();
+  const now = new Date();
+    const fechas = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const hora = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+    const fechaSalida = `${fechas} ${hora}`;
 
   await db.execute(
     `UPDATE tickets SET fecha_salida = ?, total = ? WHERE id = ?`,
@@ -363,7 +367,7 @@ export async function obtenerVentasPorDia(fecha: string) {
     fecha_hora: string;
     monto: number;
   }[]>(
-    `SELECT id, fecha_hora, monto FROM baños WHERE fecha_hora = ?`,
+    `SELECT id, DATE(fecha_hora), monto FROM baños WHERE DATE(fecha_hora) = ?`,
     [fecha]
   );
 
@@ -386,13 +390,13 @@ export async function obtenerVentasPorDia(fecha: string) {
     }[]>(`
       SELECT 
         v.id,
-        vt.fecha,
+         DATE(vt.fecha),
         v.producto,
         v.cantidad,
         v.total
       FROM ventas v
       JOIN ventas_totales vt ON v.venta_id = vt.id
-      where vt.fecha = ?
+      where  DATE(vt.fecha) = ?
     `, [fecha]);
 
     const ventasPaqueteria = await db.select<{
@@ -403,6 +407,123 @@ export async function obtenerVentasPorDia(fecha: string) {
       SELECT id, DATE(fecha_recoleccion), monto 
       FROM paqueteria 
       WHERE DATE(fecha_recoleccion) = ?`, [fecha]);
+
+
+  return {baños: ventasBaños, estacionamiento: ventasEstacionamiento, tienda: ventasTienda, paqueteria: ventasPaqueteria};
+}
+
+
+export async function obtenerVentasMatutino(fecha: string) {
+  const db = await getDb();
+
+  const ventasBaños = await db.select<{
+    id: number;
+    fecha_hora: string;
+    monto: number;
+  }[]>(
+    `SELECT id, DATE(fecha_hora), monto FROM baños WHERE date(fecha_hora) = ? AND time(fecha_hora) 
+    BETWEEN '06:00:00' AND '13:30:00'`,
+    [fecha]
+  );
+
+  const ventasEstacionamiento = await db.select<{
+    id: number;
+    fecha_salida: string;
+    placas: string;
+    total: number;
+  }[]>(
+    `SELECT id, DATE(fecha_salida) as fecha_salida, placas, total FROM tickets WHERE DATE(fecha_salida) = ?
+     AND time(fecha_salida) BETWEEN '06:00:00' AND '13:30:00'`,
+    [fecha]
+  );
+
+  const ventasTienda = await db.select<{
+      id: number;
+      fecha: string;
+      producto: string;
+      cantidad: number;
+      total: number;
+    }[]>(`
+      SELECT 
+        v.id,
+         DATE(vt.fecha),
+        v.producto,
+        v.cantidad,
+        v.total
+      FROM ventas v
+      JOIN ventas_totales vt ON v.venta_id = vt.id
+      where date(vt.fecha) = ?
+      AND time(vt.fecha) BETWEEN '06:00:00' AND '13:30:00'
+    `, [fecha]);
+
+    const ventasPaqueteria = await db.select<{
+      id: number;
+      fecha_recoleccion: string;
+      monto: number;
+    }[]>(`
+      SELECT id, DATE(fecha_recoleccion), monto 
+      FROM paqueteria 
+      WHERE DATE(fecha_recoleccion) = ? 
+      AND time(fecha_recoleccion) BETWEEN '06:00:00' AND '13:30:00'`, [fecha]);
+
+
+  return {baños: ventasBaños, estacionamiento: ventasEstacionamiento, tienda: ventasTienda, paqueteria: ventasPaqueteria};
+}
+
+
+
+export async function obtenerVentasVespertino(fecha: string) {
+  const db = await getDb();
+
+  const ventasBaños = await db.select<{
+    id: number;
+    fecha_hora: string;
+    monto: number;
+  }[]>(
+    `SELECT id, DATE(fecha_hora), monto FROM baños WHERE date(fecha_hora) = ? AND time(fecha_hora) 
+    BETWEEN '13:30:00' AND '21:00:00'`,
+    [fecha]
+  );
+
+  const ventasEstacionamiento = await db.select<{
+    id: number;
+    fecha_salida: string;
+    placas: string;
+    total: number;
+  }[]>(
+    `SELECT id, DATE(fecha_salida) as fecha_salida, placas, total FROM tickets WHERE DATE(fecha_salida) = ?
+     AND time(fecha_salida) BETWEEN '13:30:00' AND '21:00:00'`,
+    [fecha]
+  );
+
+  const ventasTienda = await db.select<{
+      id: number;
+      fecha: string;
+      producto: string;
+      cantidad: number;
+      total: number;
+    }[]>(`
+      SELECT 
+        v.id,
+        date(vt.fecha),
+        v.producto,
+        v.cantidad,
+        v.total
+      FROM ventas v
+      JOIN ventas_totales vt ON v.venta_id = vt.id
+      where date(vt.fecha) = ?
+      AND time(vt.fecha) BETWEEN '13:30:00' AND '21:00:00'
+    `, [fecha]);
+
+    const ventasPaqueteria = await db.select<{
+      id: number;
+      fecha_recoleccion: string;
+      monto: number;
+    }[]>(`
+      SELECT id, DATE(fecha_recoleccion), monto 
+      FROM paqueteria 
+      WHERE DATE(fecha_recoleccion) = ? 
+      AND time(fecha_recoleccion) BETWEEN '13:30:00' AND '21:00:00'`, [fecha]);
 
 
   return {baños: ventasBaños, estacionamiento: ventasEstacionamiento, tienda: ventasTienda, paqueteria: ventasPaqueteria};

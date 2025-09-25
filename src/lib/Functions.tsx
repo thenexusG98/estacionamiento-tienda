@@ -31,9 +31,11 @@ interface ExportCSVProps {
     total: number;
   }[];
   fileName?: string;
+  bottonName?: string;
 }
 
-const ExportCSV: React.FC<ExportCSVProps> = ({ data, fileName }) => {
+const ExportCSV: React.FC<ExportCSVProps> = ({ data, fileName, bottonName }) => {
+  const bottonLabel = bottonName || "Descargar CSV";
   const downloadCSV = () => {
     const encabezado = ["Fecha", "Categoria", "Descripcion", "Total"];
     const filas = data.map((item) => [
@@ -71,7 +73,7 @@ const ExportCSV: React.FC<ExportCSVProps> = ({ data, fileName }) => {
       onClick={downloadCSV}
       className="text-sm bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
     >
-      Descargar ventas del día
+      {bottonLabel}
     </button>
   );
 };

@@ -36,7 +36,10 @@ export default function Ventas() {
     }
 
     const db = await getDb();
-    const fecha = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const fechas = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const hora = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+    const fecha = `${fechas} ${hora}`;
     const totalVenta = itemsVenta.reduce((sum, item) => sum + item.cantidad * item.producto.precio, 0);
 
     await db.execute(

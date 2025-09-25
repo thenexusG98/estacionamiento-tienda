@@ -7,7 +7,11 @@ export default function Paqueteria() {
   const [paqueteId, setPaqueteId] = useState<number | null>(null);
 
   const handleGuardarPaquete = async () => {
-    const fecha = new Date().toISOString();
+    const now = new Date();
+    const fechas = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const hora = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+    const fecha = `${fechas} ${hora}`;
+    
     const id = await registrarEntregaPaquete(fecha);
 
     // Imprimir 2 tickets
@@ -19,7 +23,11 @@ export default function Paqueteria() {
   const handleRecolectarPaquete = async () => {
     if (!paqueteId) return alert("Ingresa un ID válido");
 
-    const fecha = new Date().toISOString();
+    const now = new Date();
+    const fechas = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const hora = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+    const fecha = `${fechas} ${hora}`;
+    
     await registrarRecoleccionPaquete(paqueteId, fecha, TARIFA_PAQUETERIA);
 
     alert("✅ Recolección registrada correctamente");

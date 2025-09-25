@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { obtenerTicketsDelDia, obtenerVentasPorDia } from "../lib/db";
+import { obtenerTicketsDelDia, obtenerVentasPorDia, obtenerVentasMatutino, obtenerVentasVespertino} from "../lib/db";
 import ExportCSV from "../lib/Functions";
 
 export default function VentasRegistradas() {
@@ -31,7 +31,51 @@ export default function VentasRegistradas() {
     }[];
     paqueteria: {
       id: number;
-      fecha_recoleccion: string ;
+      fecha_recoleccion: string;
+      monto: number;
+    }[];
+  }>({ baños: [], estacionamiento: [], tienda: [], paqueteria: [] });
+
+  const [ventasMatutino, setVentasMatutino] = useState<{
+    baños: { id: number; fecha_hora: string; monto: number }[];
+    estacionamiento: {
+      id: number;
+      fecha_salida: string;
+      placas: string;
+      total: number;
+    }[];
+    tienda: {
+      id: number;
+      fecha: string;
+      producto: string;
+      cantidad: number;
+      total: number;
+    }[];
+    paqueteria: {
+      id: number;
+      fecha_recoleccion: string;
+      monto: number;
+    }[];
+  }>({ baños: [], estacionamiento: [], tienda: [], paqueteria: [] });
+
+  const [ventasVespertino, setVentasVespertino] = useState<{
+    baños: { id: number; fecha_hora: string; monto: number }[];
+    estacionamiento: {
+      id: number;
+      fecha_salida: string;
+      placas: string;
+      total: number;
+    }[];
+    tienda: {
+      id: number;
+      fecha: string;
+      producto: string;
+      cantidad: number;
+      total: number;
+    }[];
+    paqueteria: {
+      id: number;
+      fecha_recoleccion: string;
       monto: number;
     }[];
   }>({ baños: [], estacionamiento: [], tienda: [], paqueteria: [] });
@@ -42,13 +86,23 @@ export default function VentasRegistradas() {
       setDatos(resumen);
 
       const ventas = await obtenerVentasPorDia(fechaSeleccionada);
+      
+      
+      const ventasMatutino = await obtenerVentasMatutino(fechaSeleccionada);
+      const ventasVespertino = await obtenerVentasVespertino(fechaSeleccionada);
+      console.log(ventasVespertino);
+
       setVentasDia(ventas);
+      setVentasMatutino(ventasMatutino);
+      setVentasVespertino(ventasVespertino);
+
     };
 
     cargarVentas();
   }, [fechaSeleccionada]);
 
-  const ventaTotal = datos.tickets + datos.baños + datos.ventas_totales + datos.venta_paqueteria;
+  const ventaTotal =
+    datos.tickets + datos.baños + datos.ventas_totales + datos.venta_paqueteria;
 
   const datosTransformados = [
     {
@@ -100,20 +154,89 @@ export default function VentasRegistradas() {
     })),
   ];
 
+  const dataMatutino = [
+    ...ventasMatutino.estacionamiento.map((item) => ({
+      fecha: item.fecha_salida,
+      categoria: "estacionamiento",
+      descripcion: item.placas,
+      total: item.total,
+    })),
+    ...ventasMatutino.baños.map((item) => ({
+      fecha: item.fecha_hora,
+      categoria: "baños",
+      descripcion: `Baño #${item.id}`,
+      total: item.monto,
+    })),
+    ...ventasMatutino.tienda.map((item) => ({
+      fecha: item.fecha,
+      categoria: "tienda",
+      descripcion: `${item.producto} x${item.cantidad}`,
+      total: item.total,
+    })),
+    ...ventasMatutino.paqueteria.map((item) => ({
+      fecha: item.fecha_recoleccion,
+      categoria: "paqueteria",
+      descripcion: `Paquete #${item.id}`,
+      total: item.monto,
+    })),
+  ];
+
+  const dataVespertino = [
+    ...ventasVespertino.estacionamiento.map((item) => ({
+      fecha: item.fecha_salida,
+      categoria: "estacionamiento",
+      descripcion: item.placas,
+      total: item.total,
+    })),
+    ...ventasVespertino.baños.map((item) => ({
+      fecha: item.fecha_hora,
+      categoria: "baños",
+      descripcion: `Baño #${item.id}`,
+      total: item.monto,
+    })),
+    ...ventasVespertino.tienda.map((item) => ({
+      fecha: item.fecha,
+      categoria: "tienda",
+      descripcion: `${item.producto} x${item.cantidad}`,
+      total: item.total,
+    })),
+    ...ventasVespertino.paqueteria.map((item) => ({
+      fecha: item.fecha_recoleccion,
+      categoria: "paqueteria",
+      descripcion: `Paquete #${item.id}`,
+      total: item.monto,
+    })),
+  ];
+
   return (
     <>
-      <div className="w-5/6 mx-auto mb-6">
-        <label className="block text-gray-700 mb-1 font-semibold">
-          Seleccionar fecha
-        </label>
-        <input
-          type="date"
-          value={fechaSeleccionada}
-          onChange={(e) => setFechaSeleccionada(e.target.value)}
-          className="border border-gray-300 px-3 py-2 rounded w-full md:w-1/3"
-        />
+      <div className="flex flex-col md:flex-row w-5/6 mx-auto mb-6 gap-6">
+        <div className="flex-1">
+          <label className="block text-gray-700 mb-1 font-semibold">
+        Seleccionar fecha
+          </label>
+          <input
+        type="date"
+        value={fechaSeleccionada}
+        onChange={(e) => setFechaSeleccionada(e.target.value)}
+        className="border border-gray-300 px-3 py-2 rounded w-full md:w-2/3"
+          />
+        </div>
+        <div className="flex items-end gap-4">
+          <button
+        //onClick={}
+        className="text-sm bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-900"
+          >
+        Descargar turno matutino
+          </button>
+          <button
+        //onClick={}
+        className="text-sm bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-900"
+          >
+        Descargar turno vespertino
+          </button>
+        </div>
       </div>
-
       {ventaTotal === 0 ? (
         <div className="bg-white shadow rounded-lg p-4 mb-4 w-5/6 items-center mx-auto">
           <h3 className="text-lg font-semibold text-gray-800">
@@ -148,10 +271,21 @@ export default function VentasRegistradas() {
             <h3 className="text-lg font-semibold text-gray-800 text-center ">
               Total del día: ${ventaTotal.toFixed(2)}
             </h3>
-            <div className="flex justify-center mt-2">
+            <div className="flex justify-center mt-2 gap-2">
               <ExportCSV
-                data={data}
-                fileName={`ventas ${fechaSeleccionada}.csv`}
+              data={data}
+              fileName={`ventas ${fechaSeleccionada}.csv`}
+              bottonName={"Descargar ventas del día"}
+              />
+              <ExportCSV
+              data={dataMatutino}
+              fileName={`ventas ${fechaSeleccionada}.csv`}
+              bottonName={"Descargar ventas matutinas"}
+              />
+              <ExportCSV
+              data={dataVespertino}
+              fileName={`ventas ${fechaSeleccionada}.csv`}
+              bottonName={"Descargar ventas vespertinas"}
               />
             </div>
           </div>

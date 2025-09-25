@@ -5,7 +5,10 @@ export default function Baños() {
   const montoFijo = TARIFA_BAÑO; // Monto fijo para el uso del baño
 
   const registrarUsoBaño = async () => {
-    const fechaHora = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const fecha = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const hora = now.toTimeString().slice(0, 8); // "HH:MM:SS"
+    const fechaHora = `${fecha} ${hora}`;
     await registrarBaño(fechaHora, montoFijo);
     alert('Uso del baño registrado correctamente.');
   };
