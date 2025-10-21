@@ -44,11 +44,10 @@
     }
   },
   "updater": {
-    "endpoints": [
-      "https://github.com/thenexusG98/estacionamiento-tienda/releases/latest/download/latest.json"
-    ],
+    "active": false,  
+    "endpoints": [],
     "dialog": true,
-    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApCE1cAw9dGE9+AjZxfhQFcLPdupuJ95ObEez7jngqACxJ/ballGxts3TI1eEMhxhm6cabWH9+qntLVnaqhiUfYtqNBUMSZ3JxwMx/2QG4NzAMhzApF4gZV5GcrevTREYXVsggSzJRfUnV0adCz8Tt7uloQ6ydF06PIZsni1ughUOuqROgE1+eqAUtUDCiwrBgjJEJ7OxzwjlLndEz7HkmYZMLQaIUSiUbrgRPiweF4YZb1pfn2lUDiX6gu3r1p01p/t2KHdcb3JAc+gmUN6DdkQDeSPRc8TtMkRG15fiU88AT9Hi6PX49gprXQP04RqcYPqi8rlBgEN59lZNU0ZRTAgMBAAE=\n-----END PUBLIC KEY-----"
+    "pubkey": "" 
   }
 }
 }
