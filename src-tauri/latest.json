@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "notes": "Primera versión estable del sistema de estacionamiento y tienda.",
+  "pub_date": "2025-06-17T00:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPOENBUThBTUlJQkNnS0NBUUVDcENFMWNBdzlkR0U5K3dJMmNYNFUKQlhDejNicWJpZmVU bXhIcyt  454KgAsSf22pZRsbbN0yNXhDIcYZunGm1h/fqp7S1Z2qoYlH2LajQVDEmdyccDMf9kBuDcwDIcwKReIGVeRnK3r00RGF1bIIEsyUX1J1dGnQs/E7e7paEOsnRdOjyGbJ4tboIVDrqkToBNfnqgFLVAwosKwYIyRCezsc8I5S53RM+x5JmGTC0GiFEolG64ET4sHheGGW9aX59pVA4l+oLt69adNaf7dih3XG9yQHPoJlDeg3ZEA3kj0XPE7TJERteX4lPPAE/R4uj1+PYKa10D9OEanGD6ovK5QYBDefZWTVNGUUwIDAQABCi0tLS0tRU5EIFBVQkxJQyBLRVktLS0tLQo=",
+      "url": "https://github.com/thenexusG98/estacionamiento-tienda/releases/download/0.1.0/estacionamiento-tienda_0.1.0_x64_en-US.msi"
+    }
+  }
+}

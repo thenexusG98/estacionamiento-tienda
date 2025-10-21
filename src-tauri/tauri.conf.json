@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "estacionamiento-tienda",
+  "version": "0.1.0",
+  "identifier": "com.estacionamiento-tienda.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "estacionamiento-tienda",
+        "width": 1920,
+        "height": 1080
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+  "printer": {
+    "default": true
+  },
+  "sql": {
+    "enabled": true,
+    "config": {
+      "filePath": "sqlite:data.db"
+    }
+  },
+  "updater": {
+    "endpoints": [
+      "https://github.com/thenexusG98/estacionamiento-tienda/releases/latest/download/latest.json"
+    ],
+    "dialog": true,
+    "pubkey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApCE1cAw9dGE9+AjZxfhQFcLPdupuJ95ObEez7jngqACxJ/ballGxts3TI1eEMhxhm6cabWH9+qntLVnaqhiUfYtqNBUMSZ3JxwMx/2QG4NzAMhzApF4gZV5GcrevTREYXVsggSzJRfUnV0adCz8Tt7uloQ6ydF06PIZsni1ughUOuqROgE1+eqAUtUDCiwrBgjJEJ7OxzwjlLndEz7HkmYZMLQaIUSiUbrgRPiweF4YZb1pfn2lUDiX6gu3r1p01p/t2KHdcb3JAc+gmUN6DdkQDeSPRc8TtMkRG15fiU88AT9Hi6PX49gprXQP04RqcYPqi8rlBgEN59lZNU0ZRTAgMBAAE=\n-----END PUBLIC KEY-----"
+  }
+}
+}
+

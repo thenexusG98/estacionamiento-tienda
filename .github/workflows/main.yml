@@ -1,0 +1,191 @@
+name: Publicar release de estacionamiento
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest' # macOS (Intel y Apple Silicon)
+            args: '--target universal-apple-darwin'
+          - platform: 'ubuntu-22.04' # Linux
+            args: ''
+          - platform: 'windows-latest' # Windows
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+    steps:
+      - name: Clona el repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Necesario para poder crear y subir tags
+
+      # 1. Obtén el último tag y calcula el siguiente
+      - name: Calcula el siguiente tag semver
+        id: semver
+        run: |
+          # Obtén el último tag con formato vX.Y.Z
+          LAST_TAG=$(git tag --list "v*" --sort=-v:refname | head -n 1)
+          if [[ -z "$LAST_TAG" ]]; then
+            LAST_TAG="v0.1.0"
+          fi
+
+          # Quita la 'v'
+          LAST_VERSION=${LAST_TAG#v}
+
+          # Separa en partes
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LAST_VERSION"
+
+          # Aumenta el patch
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          NEW_TAG="v$NEW_VERSION"
+
+          echo "LAST_TAG=$LAST_TAG" >> $GITHUB_ENV
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+        shell: bash
+
+      # 2. Actualiza package.json a la nueva versión (opcional pero recomendado)
+      - name: Actualiza package.json a la nueva versión
+        run: |
+          jq --arg v "$NEW_VERSION" '.version = $v' package.json > tmp.$$.json && mv tmp.$$.json package.json
+          cat package.json
+        shell: bash
+
+      # 3. Configura git para push autenticado
+      - name: Configura git para push autenticado
+        run: |
+          git config user.name "thenexusG98"
+          git config user.email "capitanuri@gmail.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+        shell: bash
+
+      # 4. Crea y sube el nuevo tag solo si no existe (SOLO EN LINUX para evitar conflictos)
+      - name: Crea y sube el nuevo tag si no existe
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "El tag $NEW_TAG ya existe, no se crea uno nuevo."
+          else
+            git add package.json
+            git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "Nada que commitear"
+            git tag "$NEW_TAG"
+            git push origin "$NEW_TAG"
+            git push origin main
+            echo "Tag $NEW_TAG creado y subido."
+          fi
+        shell: bash
+
+      # Resto de pasos de build y release...
+      - name: Instala dependencias de sistema para Tauri (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev \
+            build-essential \
+            curl \
+            wget \
+            libssl-dev \
+            libgtk-3-dev \
+            squashfs-tools \
+            pkg-config
+
+      - name: Instala Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Instala Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Instalar jq para todas las plataformas
+      - name: Instala jq (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: sudo apt-get install -y jq
+        
+      - name: Instala jq (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: brew install jq
+        
+      - name: Instala jq (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: choco install jq -y
+        shell: pwsh
+
+      - name: Limpieza profunda de Rust
+        run: |
+          cd src-tauri
+          rm -rf target
+          rm -f Cargo.lock
+          cargo clean
+        shell: bash
+
+      - name: Instala dependencias de Node.js
+        run: npm ci
+
+      - name: Instala Tauri CLI
+        run: npm install -g @tauri-apps/cli
+        shell: bash
+
+      - name: Debug TAURI_SIGNING_PRIVATE_KEY
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY NO está presente. El secreto no fue leído."
+            exit 1
+          else
+            echo "TAURI_SIGNING_PRIVATE_KEY está presente."
+            echo "$TAURI_SIGNING_PRIVATE_KEY" | head -n 2
+          fi
+        shell: bash
+
+      - name: Compila el proyecto con Tauri
+        run: npm run tauri build -- ${{ matrix.args }}
+        shell: bash
+
+      - name: Genera latest.json con la versión del tag
+        if: matrix.platform == 'ubuntu-22.04'
+        run: node scripts/generate-latest-json.js
+        env:
+          APP_VERSION: ${{ env.NEW_TAG }}
+        shell: bash
+
+      - name: Verifica archivos
+        run: |
+          echo "=== Archivos generados ==="
+          ls -lhR src-tauri/target/release/bundle/ || true
+          echo "=== Contenido de latest.json ==="
+          [ -f src-tauri/latest.json ] && cat src-tauri/latest.json || echo "No latest.json"
+        shell: bash
+
+      - name: Sube archivos a GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_TAG }}
+          draft: false
+          prerelease: false
+          files: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/macos/*.app
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/latest.json
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
