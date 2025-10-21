@@ -20,9 +20,6 @@ jobs:
             args: ''
 
     runs-on: ${{ matrix.platform }}
-    env:
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
     steps:
       - name: Clona el repositorio
@@ -140,17 +137,6 @@ jobs:
 
       - name: Instala Tauri CLI
         run: npm install -g @tauri-apps/cli
-        shell: bash
-
-      - name: Debug TAURI_SIGNING_PRIVATE_KEY
-        run: |
-          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            echo "TAURI_SIGNING_PRIVATE_KEY NO está presente. El secreto no fue leído."
-            exit 1
-          else
-            echo "TAURI_SIGNING_PRIVATE_KEY está presente."
-            echo "$TAURI_SIGNING_PRIVATE_KEY" | head -n 2
-          fi
         shell: bash
 
       - name: Compila el proyecto con Tauri
