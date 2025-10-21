@@ -1,17 +1,10 @@
 import { useEffect, useState } from "react";
-<<<<<<< HEAD
 import { obtenerTicketsDelDia, obtenerVentasPorDia } from "../lib/db";
 import ExportCSV from "../lib/Functions";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function VentasRegistradas() {
   const { user } = useAuth();
-=======
-import { obtenerTicketsDelDia, obtenerVentasPorDia, obtenerVentasMatutino, obtenerVentasVespertino} from "../lib/db";
-import ExportCSV from "../lib/Functions";
-
-export default function VentasRegistradas() {
->>>>>>> 37563f9bd8839c120a2aaa693dc1243d1f0e6351
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() =>
     new Date().toISOString().slice(0, 10)
   );
