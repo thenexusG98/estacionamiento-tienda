@@ -193,6 +193,7 @@ import {
             ))
           )}
         </div>
+<<<<<<< HEAD
 
 
       </div>
@@ -232,3 +233,40 @@ import {
   }
 
 
+=======
+      </div>
+    </div>
+  );
+}
+
+// COMPONENTES SECUNDARIOS
+function SummaryCard({ icon, bgColor, title, value, subtitle }: any) {
+  return (
+    <div className="dashboard-card bg-white p-6 shadow-md rounded-xl">
+      <div className="flex items-center">
+        <div className={`rounded-full ${bgColor} p-3 mr-4`}>{icon}</div>
+        <div>
+          <h3 className="text-gray-500 text-sm">{title}</h3>
+          <p className="text-2xl font-bold text-gray-800">{value}</p>
+          <p className="text-xs text-green-600 flex items-center">
+            <FaArrowUp className="mr-1" />
+            <span>{subtitle}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickAccess({ icon, label, color, onClick }: any) {
+  return (
+    <button
+      className={`quick-access-btn ${color} hover:brightness-90 text-white p-4 rounded-xl flex flex-col items-center justify-center shadow-md`}
+      onClick={onClick}
+    >
+      <div className="text-3xl mb-2">{icon}</div>
+      <span className="font-medium">{label}</span>
+    </button>
+  );
+}
+>>>>>>> 37563f9bd8839c120a2aaa693dc1243d1f0e6351
