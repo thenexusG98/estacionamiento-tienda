@@ -32,10 +32,6 @@ tokio = { version = "1.45.1", features = ["full"] }
 dirs = "6.0.0"
 tauri-plugin-shell = "2"
 tauri-plugin-fs = "2.0.0"
-tauri-plugin-dialog = "2"
-
-[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-updater = "2"
 
 # Optimizaciones para compilación más rápida en desarrollo
 [profile.dev]
