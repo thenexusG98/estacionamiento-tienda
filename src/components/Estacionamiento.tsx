@@ -5,22 +5,40 @@ import {
   registrarSalidaTicketEstacionamiento,
   consultaFechaEntradaTicket,
   obtenerTicket,
+  obtenerTicketsPendientesPorUsuario,
 } from "../lib/db";
 import {createTicketEstacionamiento} from "../lib/CreateTicket";
 
-import { FaExclamationTriangle } from "react-icons/fa";
+import { FaExclamationTriangle, FaCar, FaClock } from "react-icons/fa";
 
 import { TARIFA_ESTACIONAMIENTO_POR_HORA } from "../lib/Constantes";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Estacionamiento() {
+  const { user } = useAuth();
   const [ticketId, setTicketId] = useState<number | null>(null);
   const [placas, setPlacas] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState<string | null>(null);
   const [fee, setFee] = useState<number | null>(null);
   const [generando, setGenerando] = useState(false);
   const [idTicket, setIdTicket] = useState<number | null>(null);
+  const [ticketsPendientes, setTicketsPendientes] = useState<any[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Cargar tickets pendientes al montar el componente
+  useEffect(() => {
+    cargarTicketsPendientes();
+  }, []);
+
+  const cargarTicketsPendientes = async () => {
+    try {
+      const tickets = await obtenerTicketsPendientesPorUsuario();
+      setTicketsPendientes(tickets);
+    } catch (error) {
+      console.error("Error al cargar tickets pendientes:", error);
+    }
+  };
 
   useEffect(() => {
     const handleScannerInput = (e: KeyboardEvent) => {
@@ -55,6 +73,8 @@ export default function Estacionamiento() {
       const placasFormatted = placas.toUpperCase();
       await createTicketEstacionamiento({ id, placasFormatted }, "print");
       alert(`Ticket generado e impreso. ID: ${id}`);
+      // Recargar lista de tickets pendientes
+      await cargarTicketsPendientes();
     } catch (error) {
       console.error("Error al generar ticket:", error);
       alert("Ocurrió un error al generar el ticket.");
@@ -62,6 +82,22 @@ export default function Estacionamiento() {
       setGenerando(false);
       setPlacas(null);
     }
+  };
+
+  const calcularTiempoTranscurrido = (fechaEntrada: string): string => {
+    const startTime = new Date(fechaEntrada);
+    const endTime = new Date();
+    const diffMs = endTime.getTime() - startTime.getTime();
+    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+    return `${diffHours} hora${diffHours !== 1 ? 's' : ''}`;
+  };
+
+  const calcularMonto = (fechaEntrada: string): number => {
+    const startTime = new Date(fechaEntrada);
+    const endTime = new Date();
+    const diffMs = endTime.getTime() - startTime.getTime();
+    const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
+    return diffHours * TARIFA_ESTACIONAMIENTO_POR_HORA;
   };
 
   const checkTicket = async (id: number) => {
@@ -212,6 +248,8 @@ export default function Estacionamiento() {
                     setElapsedTime(null);
                     setFee(null);
                     setIdTicket(null);
+                    // Recargar lista de tickets pendientes
+                    await cargarTicketsPendientes();
                   } catch (err) {
                     console.error(err);
                     alert("❌ Error al registrar pago");
@@ -224,6 +262,103 @@ export default function Estacionamiento() {
           )}
         </div>
       )}
+
+      {/* Sección de Tickets Pendientes */}
+      <div className="mt-8">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xl font-bold text-gray-800 flex items-center">
+            <FaCar className="mr-2 text-blue-600" />
+            Vehículos con Ticket Pendiente de Pago
+          </h3>
+          {user?.role === 'admin' ? (
+            <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg text-sm">
+              📊 Vista General (Todos los usuarios)
+            </span>
+          ) : (
+            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-lg text-sm">
+              👤 Mis Tickets
+            </span>
+          )}
+        </div>
+
+        {ticketsPendientes.length === 0 ? (
+          <div className="bg-white shadow rounded-lg p-6 text-center text-gray-500">
+            ✅ No hay tickets pendientes de pago
+          </div>
+        ) : (
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <table className="min-w-full">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    ID Ticket
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Placas
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Entrada
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    <FaClock className="inline mr-1" />
+                    Tiempo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Monto Estimado
+                  </th>
+                  {user?.role === 'admin' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      Registrado por
+                    </th>
+                  )}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                    Acción
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {ticketsPendientes.map((ticket) => {
+                  const tiempoTranscurrido = calcularTiempoTranscurrido(ticket.fecha_entrada);
+                  const montoEstimado = calcularMonto(ticket.fecha_entrada);
+                  
+                  return (
+                    <tr key={ticket.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        #{ticket.id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-semibold">
+                        {ticket.placas}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {new Date(ticket.fecha_entrada).toLocaleString('es-MX')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 font-semibold">
+                        {tiempoTranscurrido}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-bold">
+                        ${montoEstimado.toFixed(2)}
+                      </td>
+                      {user?.role === 'admin' && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {ticket.usuario_nombre || 'N/A'}
+                        </td>
+                      )}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => checkTicket(ticket.id)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+                        >
+                          Cobrar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

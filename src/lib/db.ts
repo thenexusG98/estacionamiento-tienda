@@ -384,6 +384,70 @@ export async function obtenerTicket(id: number): Promise<{
   return result[0];
 }
 
+// Obtener tickets pendientes de pago por usuario
+export async function obtenerTicketsPendientesPorUsuario(): Promise<{
+  id: number;
+  placas: string;
+  fecha_entrada: string;
+  fecha_salida: string | null;
+  usuario_nombre: string;
+}[]> {
+  const db = await getDb();
+  const usuario = getUsuarioSesion();
+  
+  // Si es admin, no filtrar por usuario. Si es empleado, solo mostrar sus tickets
+  const esAdmin = usuario?.rol === 'admin';
+  const usuarioIdFiltro = esAdmin ? null : usuario?.id || null;
+
+  const query = `
+    SELECT id, placas, fecha_entrada, fecha_salida, usuario_nombre
+    FROM tickets
+    WHERE total IS NULL OR total = ''
+    ${!esAdmin ? 'AND usuario_id = ?' : ''}
+    ORDER BY fecha_entrada DESC
+  `;
+
+  const tickets = await db.select<{
+    id: number;
+    placas: string;
+    fecha_entrada: string;
+    fecha_salida: string | null;
+    usuario_nombre: string;
+  }[]>(query, esAdmin ? [] : [usuarioIdFiltro]);
+
+  return tickets;
+}
+
+// Obtener paquetes pendientes de cobro por usuario
+export async function obtenerPaquetesPendientesPorUsuario(): Promise<{
+  id: number;
+  fecha_entrega: string;
+  usuario_nombre: string;
+}[]> {
+  const db = await getDb();
+  const usuario = getUsuarioSesion();
+  
+  // Si es admin, no filtrar por usuario. Si es empleado, solo mostrar sus paquetes
+  const esAdmin = usuario?.rol === 'admin';
+  const usuarioIdFiltro = esAdmin ? null : usuario?.id || null;
+
+  const query = `
+    SELECT id, fecha_entrega, usuario_nombre
+    FROM paqueteria
+    WHERE monto IS NULL OR monto = ''
+    ${!esAdmin ? 'AND usuario_id = ?' : ''}
+    ORDER BY fecha_entrega DESC
+  `;
+
+  const paquetes = await db.select<{
+    id: number;
+    fecha_entrega: string;
+    usuario_nombre: string;
+  }[]>(query, esAdmin ? [] : [usuarioIdFiltro]);
+
+  return paquetes;
+}
+
 
 export async function obtenerTicketsDelDia(fechaDia: string) {
   const db = await getDb();
