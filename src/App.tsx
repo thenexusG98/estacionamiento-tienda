@@ -10,6 +10,7 @@ import Baños from './components/Baños';
 import Paqueteria from './components/Paqueteria';
 import Login from './components/Login';
 import Usuarios from './components/Usuarios';
+import UpdateChecker from './components/UpdateChecker';
 
 import { useState } from 'react';
 import { useAuth } from './hooks/useAuth';
@@ -39,6 +40,7 @@ export default function App() {
   // Si está autenticado, mostrar la aplicación principal
   return (
     <div className="flex h-screen bg-gray-100">
+      <UpdateChecker />
       <Sidebar setSection={setSection} user={user} onLogout={logout} />
       <div className="flex-1 overflow-y-auto">
         {section === 'dashboard' && <Dashboard setSection={setSection} />}

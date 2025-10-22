@@ -10,7 +10,6 @@
     "opener:default",
     "sql:default",
     "sql:allow-execute",
-    "sql:default",
     "shell:default",
     "fs:default",
     {
@@ -53,6 +52,11 @@
         }
       ]
     },
-    "dialog:default"
+    "dialog:default",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download",
+    "updater:allow-install",
+    "updater:allow-download-and-install"
   ]
 }

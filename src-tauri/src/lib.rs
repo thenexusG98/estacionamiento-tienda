@@ -8,8 +8,8 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init::<tauri::Wry>())
         .plugin(tauri_plugin_fs::init::<tauri::Wry>())
         .plugin(tauri_plugin_dialog::init::<tauri::Wry>())
-        // Si usas updater:
-        // .plugin(tauri_plugin_updater::init::<tauri::Wry>())
+        .plugin(tauri_plugin_updater::Builder::new().build::<tauri::Wry>())
+        .plugin(tauri_plugin_process::init::<tauri::Wry>())
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
