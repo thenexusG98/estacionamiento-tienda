@@ -399,23 +399,38 @@ export async function obtenerTicketsPendientesPorUsuario(): Promise<{
   const esAdmin = usuario?.rol === 'admin';
   const usuarioIdFiltro = esAdmin ? null : usuario?.id || null;
 
-  const query = `
+  if (esAdmin){
+    const query = `
     SELECT id, placas, fecha_entrada, fecha_salida, usuario_nombre
     FROM tickets
     WHERE total IS NULL OR total = ''
-    ${!esAdmin ? 'AND usuario_id = ?' : ''}
+    ORDER BY fecha_entrada DESC
+  `;
+    return await db.select<{
+      id: number;
+      placas: string;
+      fecha_entrada: string;
+      fecha_salida: string | null;
+      usuario_nombre: string;
+    }[]>(query);
+  }
+
+  const query = `
+    SELECT id, placas, fecha_entrada, fecha_salida, usuario_nombre
+    FROM tickets
+    WHERE usuario_id = ?
+    AND total IS NULL OR total = ''
     ORDER BY fecha_entrada DESC
   `;
 
-  const tickets = await db.select<{
+  return await db.select<{
     id: number;
     placas: string;
     fecha_entrada: string;
     fecha_salida: string | null;
     usuario_nombre: string;
-  }[]>(query, esAdmin ? [] : [usuarioIdFiltro]);
+  }[]>(query, [usuarioIdFiltro]);
 
-  return tickets;
 }
 
 // Obtener paquetes pendientes de cobro por usuario
@@ -431,21 +446,43 @@ export async function obtenerPaquetesPendientesPorUsuario(): Promise<{
   const esAdmin = usuario?.rol === 'admin';
   const usuarioIdFiltro = esAdmin ? null : usuario?.id || null;
 
+  if (esAdmin){
+    console.log("soy admin");
+    
+    const query = `
+      SELECT id, fecha_entrega, usuario_nombre
+      FROM paqueteria
+      WHERE monto IS NULL OR monto = ''
+      ORDER BY fecha_entrega DESC
+    `;
+
+    return await db.select<{
+      id: number;
+      fecha_entrega: string;
+      usuario_nombre: string;
+    }[]>(query);
+  }
+
+  console.log("usuario: " + usuario?.id);
+  
   const query = `
     SELECT id, fecha_entrega, usuario_nombre
     FROM paqueteria
-    WHERE monto IS NULL OR monto = ''
-    ${!esAdmin ? 'AND usuario_id = ?' : ''}
+    WHERE usuario_id = ?
+    AND monto IS NULL OR monto = ''
     ORDER BY fecha_entrega DESC
   `;
 
-  const paquetes = await db.select<{
+  const paquete = await db.select<{
     id: number;
     fecha_entrega: string;
     usuario_nombre: string;
-  }[]>(query, esAdmin ? [] : [usuarioIdFiltro]);
+  }[]>(query, [usuarioIdFiltro]);
 
-  return paquetes;
+  console.log(paquete);
+
+  return paquete;
+  
 }
 
 
