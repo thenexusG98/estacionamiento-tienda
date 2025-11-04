@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FaStore, FaUser, FaLock, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth';
+import { APP_VERSION } from '../lib/version';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -138,7 +139,7 @@ export default function Login() {
         {/* Footer */}
         <div className="text-center">
           <p className="text-blue-200 text-sm">
-            Sistema de Gestión de Tienda v1.0
+            Sistema de Gestión de Tienda v{APP_VERSION}
           </p>
         </div>
       </div>

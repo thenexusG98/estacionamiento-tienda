@@ -34,21 +34,22 @@
     ]
   },
   "plugins": {
-  "printer": {
-    "default": true
-  },
-  "sql": {
-    "enabled": true,
-    "config": {
-      "filePath": "sqlite:data.db"
+    "printer": {
+      "default": true
+    },
+    "sql": {
+      "enabled": true,
+      "config": {
+        "filePath": "sqlite:data.db"
+      }
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/thenexusG98/estacionamiento-tienda/releases/latest/download/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEyMTQ3OUYzQzU0RUQ3OTAKUldTUTEwN0Y4M2tVb3FiVS85MDhaaFlBWklNck5YMUpRSndXbUtCeWIzcTl0ajcxR3BFKzFJTzAK"
     }
-  },
-  "updater": {
-    "active": true,  
-    "endpoints": ["https://github.com/thenexusG98/estacionamiento-tienda/releases/latest/download/latest.json"],
-    "dialog": true,
-    "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEyMTQ3OUYzQzU0RUQ3OTAKUldTUTEwN0Y4M2tVb3FiVS85MDhaaFlBWklNck5YMUpRSndXbUtCeWIzcTl0ajcxR3BFKzFJTzAK" 
   }
 }
-}
-

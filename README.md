@@ -1,6 +1,15 @@
 # Estacionamiento Tienda
 
+**Versión Actual: 0.1.23**
+
 Este proyecto es una aplicación desarrollada con **Tauri**, **React**, y **TypeScript** utilizando **Vite** como herramienta de construcción. La aplicación está diseñada para gestionar un sistema de estacionamiento y tienda, proporcionando funcionalidades como el manejo de inventarios, ventas, reportes, y más.
+
+## 📋 Changelog
+
+### v0.1.23 - [Fecha]
+- Descripción de los cambios en esta versión
+
+<!-- El historial de versiones se actualiza automáticamente por GitHub Actions -->
 
 ## Estructura del Proyecto
 

@@ -14,6 +14,7 @@ import {
   FaUsers,
 } from 'react-icons/fa';
 import { User } from '../hooks/useAuth';
+import { APP_VERSION } from '../lib/version';
 
 interface SidebarProps {
   setSection: (section: string) => void;
@@ -91,6 +92,13 @@ export default function Sidebar({ setSection, user, onLogout }: SidebarProps) {
           <FaSignOutAlt className="mr-2" />
           <span>Cerrar sesión</span>
         </button>
+        
+        {/* Versión de la aplicación */}
+        <div className="mt-3 text-center">
+          <p className="text-xs text-blue-300">
+            v{APP_VERSION}
+          </p>
+        </div>
       </div>
     </div>
   );

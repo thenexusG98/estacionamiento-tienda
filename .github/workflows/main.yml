@@ -59,28 +59,24 @@ jobs:
           cat package.json
         shell: bash
 
+      # 2.1 Sincroniza la versión en todos los archivos
+      - name: Sincroniza versión en tauri.conf.json y Cargo.toml
+        run: |
+          node scripts/sync-version.js
+        shell: bash
+
+      # 2.2 Actualiza README.md con changelog
+      - name: Actualiza README.md con changelog
+        run: |
+          node scripts/update-readme.js
+        shell: bash
+
       # 3. Configura git para push autenticado
       - name: Configura git para push autenticado
         run: |
           git config user.name "thenexusG98"
           git config user.email "capitanuri@gmail.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-        shell: bash
-
-      # 4. Crea y sube el nuevo tag solo si no existe (SOLO EN LINUX para evitar conflictos)
-      - name: Crea y sube el nuevo tag si no existe
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
-            echo "El tag $NEW_TAG ya existe, no se crea uno nuevo."
-          else
-            git add package.json
-            git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "Nada que commitear"
-            git tag "$NEW_TAG"
-            git push origin "$NEW_TAG"
-            git push origin main
-            echo "Tag $NEW_TAG creado y subido."
-          fi
         shell: bash
 
       # Resto de pasos de build y release...
@@ -151,6 +147,22 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           node scripts/generate-latest-json.js
+        shell: bash
+
+      # 4. Crea y sube el nuevo tag SOLO DESPUÉS de compilación exitosa (SOLO EN LINUX)
+      - name: Crea y sube el nuevo tag después de compilación exitosa
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "El tag $NEW_TAG ya existe, no se crea uno nuevo."
+          else
+            git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml README.md
+            git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "Nada que commitear"
+            git tag "$NEW_TAG"
+            git push origin "$NEW_TAG"
+            git push origin main
+            echo "✅ Tag $NEW_TAG creado y subido después de compilación exitosa."
+          fi
         shell: bash
 
       - name: Sube archivos a GitHub Release
