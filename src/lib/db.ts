@@ -350,12 +350,19 @@ export async function registrarTicketEstacionamiento(fecha_entrada: string, plac
   const db = await getDb();
   const usuario = getUsuarioSesion();
 
-  await db.execute(
+  const result = await db.execute(
     `INSERT INTO tickets (fecha_entrada, placas, usuario_id, usuario_nombre) VALUES (?, ?, ?, ?)`,
     [fecha_entrada, placas, usuario?.id || null, usuario?.nombre || null]
   );
 
-  const [{ id }] = await db.select<{ id: number }[]>(`SELECT last_insert_rowid() AS id`);
+  // Usar lastInsertId del resultado directo en lugar de SELECT
+  const id = result.lastInsertId as number;
+  
+  // Validar que el ID sea válido
+  if (!id || id === 0) {
+    throw new Error('Error al generar el ID del ticket');
+  }
+  
   return id;
 }
 

@@ -82,6 +82,13 @@ export default function Estacionamiento() {
     try {
       const fecha = obtenerFechaHoraLocal();
       const id = await registrarTicketEstacionamiento(fecha, placas);
+      
+      // Validar que se obtuvo un ID válido
+      if (!id || id === 0) {
+        throw new Error('No se pudo generar el ID del ticket');
+      }
+      
+      console.log('Ticket ID generado:', id);
       const placasFormatted = placas.toUpperCase();
       await createTicketEstacionamiento({ id, placasFormatted }, "print");
       alert(`Ticket generado e impreso. ID: ${id}`);
@@ -89,7 +96,7 @@ export default function Estacionamiento() {
       await cargarTicketsPendientes();
     } catch (error) {
       console.error("Error al generar ticket:", error);
-      alert("Ocurrió un error al generar el ticket.");
+      alert(`Ocurrió un error al generar el ticket: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setGenerando(false);
       setPlacas(null);
