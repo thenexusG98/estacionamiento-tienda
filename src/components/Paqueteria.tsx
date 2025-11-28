@@ -5,6 +5,18 @@ import { TARIFA_PAQUETERIA } from "../lib/Constantes";
 import { useAuth } from "../hooks/useAuth";
 import { FaBox, FaClock } from "react-icons/fa";
 
+// Función helper para obtener fecha y hora local
+function obtenerFechaHoraLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  const horas = String(ahora.getHours()).padStart(2, '0');
+  const minutos = String(ahora.getMinutes()).padStart(2, '0');
+  const segundos = String(ahora.getSeconds()).padStart(2, '0');
+  return `${año}-${mes}-${dia} ${horas}:${minutos}:${segundos}`;
+}
+
 export default function Paqueteria() {
   const [paqueteId, setPaqueteId] = useState<number | null>(null);
   const [paquetesPendientes, setPaquetesPendientes] = useState<{
@@ -35,7 +47,7 @@ export default function Paqueteria() {
   };
 
   const handleGuardarPaquete = async () => {
-    const fecha = new Date().toISOString();
+    const fecha = obtenerFechaHoraLocal();
     const id = await registrarEntregaPaquete(fecha);
 
     // Imprimir 2 tickets
@@ -50,7 +62,7 @@ export default function Paqueteria() {
   const handleRecolectarPaquete = async () => {
     if (!paqueteId) return alert("Ingresa un ID válido");
 
-    const fecha = new Date().toISOString();
+    const fecha = obtenerFechaHoraLocal();
     await registrarRecoleccionPaquete(paqueteId, fecha, TARIFA_PAQUETERIA);
 
     alert("✅ Recolección registrada correctamente");
@@ -61,7 +73,7 @@ export default function Paqueteria() {
   };
 
   const handleCobrarPaquete = async (id: number) => {
-    const fecha = new Date().toISOString();
+    const fecha = obtenerFechaHoraLocal();
     await registrarRecoleccionPaquete(id, fecha, TARIFA_PAQUETERIA);
     
     alert("✅ Paquete cobrado correctamente");

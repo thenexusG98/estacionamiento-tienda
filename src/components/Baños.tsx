@@ -1,11 +1,20 @@
 import { registrarBaño } from '../lib/db';
 import { TARIFA_BAÑO} from '../lib/Constantes';
 
+// Función helper para obtener fecha local
+function obtenerFechaLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
+
 export default function Baños() {
   const montoFijo = TARIFA_BAÑO; // Monto fijo para el uso del baño
 
   const registrarUsoBaño = async () => {
-    const fechaHora = new Date().toISOString().slice(0, 10);
+    const fechaHora = obtenerFechaLocal();
     await registrarBaño(fechaHora, montoFijo);
     alert('Uso del baño registrado correctamente.');
   };

@@ -6,6 +6,15 @@ import { obtenerResumenDelDia, contarProductosBajos, obtenerProductosMasVendidos
 import { TARIFA_BAÑO} from '../lib/Constantes';
 import { useAuth } from '../contexts/AuthContext';
 
+// Función helper para obtener fecha local
+function obtenerFechaLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
+
 import {
     FaDollarSign,
     FaArrowUp,
@@ -43,7 +52,7 @@ import {
           return;
         }*/
     
-        const fechaHora = new Date().toISOString().slice(0, 10);
+        const fechaHora = obtenerFechaLocal();
         await registrarBaño(fechaHora, montoFijo);
         alert('Uso del baño registrado correctamente.');
       };

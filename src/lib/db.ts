@@ -2,6 +2,26 @@ import Database from '@tauri-apps/plugin-sql'
 
 const dbFile = 'sqlite:data.db'; // nombre del archivo en la raíz de almacenamiento de Tauri
 
+// Funciones helper para manejar fechas en hora local
+function obtenerFechaLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
+
+function obtenerFechaHoraLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  const horas = String(ahora.getHours()).padStart(2, '0');
+  const minutos = String(ahora.getMinutes()).padStart(2, '0');
+  const segundos = String(ahora.getSeconds()).padStart(2, '0');
+  return `${año}-${mes}-${dia} ${horas}:${minutos}:${segundos}`;
+}
+
 // Variable global para almacenar el usuario actual en sesión
 let usuarioEnSesion: { id: number; usuario: string; nombre: string; rol?: string } | null = null;
 
@@ -123,7 +143,7 @@ export async function getDb() {
       await db.execute(`
         INSERT INTO usuarios (usuario, password, nombre_completo, email, rol, fecha_creacion)
         VALUES ('admin', 'admin123', 'Administrador', 'admin@tienda.com', 'admin', ?)
-      `, [new Date().toISOString()]);
+      `, [obtenerFechaHoraLocal()]);
     }
 
   return db;
@@ -239,7 +259,7 @@ export async function registrarProducto(nombre: string, precio: number, stock: n
   
   export async function obtenerResumenDelDia() {
     const db = await getDb();
-    const fecha = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const fecha = obtenerFechaLocal(); // YYYY-MM-DD
     const usuario = getUsuarioSesion();
     
     // Si es admin, no filtrar por usuario. Si es empleado, solo mostrar su resumen
@@ -361,7 +381,7 @@ export async function consultaFechaEntradaTicket(id: number) {
 
 export async function registrarPago(idTicket: number, total: number) {
   const db = await getDb();
-  const fechaSalida = new Date().toISOString();
+  const fechaSalida = obtenerFechaHoraLocal();
 
   await db.execute(
     `UPDATE tickets SET fecha_salida = ?, total = ? WHERE id = ?`,
@@ -789,7 +809,13 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
     if (nuevosIntentos >= 5) {
       const ahora = new Date();
       ahora.setMinutes(ahora.getMinutes() + 30);
-      bloqueadoHasta = ahora.toISOString();
+      const año = ahora.getFullYear();
+      const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+      const dia = String(ahora.getDate()).padStart(2, '0');
+      const horas = String(ahora.getHours()).padStart(2, '0');
+      const minutos = String(ahora.getMinutes()).padStart(2, '0');
+      const segundos = String(ahora.getSeconds()).padStart(2, '0');
+      bloqueadoHasta = `${año}-${mes}-${dia} ${horas}:${minutos}:${segundos}`;
     }
 
     await db.execute(`
@@ -806,7 +832,7 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
   }
 
   // Login exitoso - actualizar último acceso y resetear intentos
-  const ahora = new Date().toISOString();
+  const ahora = obtenerFechaHoraLocal();
   await db.execute(`
     UPDATE usuarios 
     SET ultimo_acceso = ?, intentos_fallidos = 0, bloqueado_hasta = NULL 
@@ -846,7 +872,7 @@ export async function crearUsuario(
     throw new Error('El usuario ya existe');
   }
 
-  const fechaCreacion = new Date().toISOString();
+  const fechaCreacion = obtenerFechaHoraLocal();
   const result = await db.execute(`
     INSERT INTO usuarios (usuario, password, nombre_completo, email, rol, fecha_creacion)
     VALUES (?, ?, ?, ?, ?, ?)

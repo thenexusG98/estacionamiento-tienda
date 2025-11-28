@@ -2,6 +2,15 @@ import { useState } from 'react';
 import { getDb } from '../lib/db';
 import { TARIFA_ESTACIONAMIENTO_POR_HORA} from '../lib/Constantes';
 
+// Función helper para obtener fecha local
+function obtenerFechaLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
+
 export default function CobroTicket() {
   const [ticketId, setTicketId] = useState('');
   const [info, setInfo] = useState<{ tiempo: string; total: number } | null>(null);
@@ -29,7 +38,7 @@ export default function CobroTicket() {
 
   const registrarSalida = async () => {
     const db = await getDb();
-    const fechaSalida = new Date().toISOString().slice(0, 10);
+    const fechaSalida = obtenerFechaLocal();
     await db.execute(
       `UPDATE tickets SET fecha_salida = ?, total = ? WHERE id = ?`,
       [fechaSalida, info?.total, ticketId]

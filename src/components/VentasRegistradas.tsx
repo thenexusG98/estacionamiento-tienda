@@ -3,10 +3,19 @@ import { obtenerTicketsDelDia, obtenerVentasPorDia } from "../lib/db";
 import ExportCSV from "../lib/Functions";
 import { useAuth } from "../contexts/AuthContext";
 
+// Función helper para obtener fecha local
+function obtenerFechaLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
+
 export default function VentasRegistradas() {
   const { user } = useAuth();
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() =>
-    new Date().toISOString().slice(0, 10)
+    obtenerFechaLocal()
   );
 
   const [datos, setDatos] = useState<{
