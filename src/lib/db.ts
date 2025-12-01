@@ -147,6 +147,26 @@ export async function getDb() {
       `, [obtenerFechaHoraLocal()]);
     }
 
+  // Tabla de módulos bloqueados
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS modulos_bloqueados (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      modulo TEXT NOT NULL UNIQUE,
+      bloqueado INTEGER NOT NULL DEFAULT 0,
+      fecha_modificacion TEXT,
+      usuario_admin TEXT
+    );
+  `);
+
+  // Insertar módulos por defecto si no existen
+  const modulos = ['dashboard', 'estacionamiento', 'baños', 'paqueteria', 'ventas', 'inventario', 'productos', 'reportes'];
+  for (const modulo of modulos) {
+    await db.execute(
+      `INSERT OR IGNORE INTO modulos_bloqueados (modulo, bloqueado) VALUES (?, 0)`,
+      [modulo]
+    );
+  }
+
   return db;
 }
 
@@ -1263,4 +1283,54 @@ export async function obtenerEstadisticasUsuario(usuarioId: number, fechaInicio?
       (bañosStats[0]?.total_ingresos || 0) +
       (paqueteriaStats[0]?.total_ingresos || 0)
   };
+}
+
+// ============================================
+// FUNCIONES PARA GESTIONAR MÓDULOS BLOQUEADOS
+// ============================================
+
+export async function obtenerModulosBloqueados() {
+  const db = await getDb();
+  const modulos = await db.select<{
+    id: number;
+    modulo: string;
+    bloqueado: number;
+    fecha_modificacion: string | null;
+    usuario_admin: string | null;
+  }[]>(`SELECT * FROM modulos_bloqueados ORDER BY modulo`);
+  
+  return modulos;
+}
+
+export async function toggleModuloBloqueado(modulo: string, bloqueado: boolean) {
+  const db = await getDb();
+  const usuario = getUsuarioSesion();
+  const fecha = obtenerFechaHoraLocal();
+  
+  await db.execute(
+    `UPDATE modulos_bloqueados 
+     SET bloqueado = ?, fecha_modificacion = ?, usuario_admin = ? 
+     WHERE modulo = ?`,
+    [bloqueado ? 1 : 0, fecha, usuario?.nombre || 'Admin', modulo]
+  );
+
+  logger.info(
+    LogCategory.SYSTEM,
+    `Módulo ${bloqueado ? 'bloqueado' : 'desbloqueado'}: ${modulo}`,
+    {
+      modulo,
+      estado: bloqueado ? 'bloqueado' : 'desbloqueado',
+      admin: usuario?.nombre || 'Admin'
+    }
+  );
+}
+
+export async function verificarModuloBloqueado(modulo: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.select<{ bloqueado: number }[]>(
+    `SELECT bloqueado FROM modulos_bloqueados WHERE modulo = ?`,
+    [modulo]
+  );
+  
+  return result[0]?.bloqueado === 1;
 }

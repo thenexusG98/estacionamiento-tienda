@@ -1,7 +1,7 @@
 // src/components/Dashboard.tsx
 import { useEffect, useState } from 'react';
 import { obtenerResumenDelDia, contarProductosBajos, obtenerProductosMasVendidos,
-  registrarBaño
+  registrarBaño, verificarModuloBloqueado
  } from '../lib/db';
 import { TARIFA_BAÑO} from '../lib/Constantes';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,6 +42,7 @@ import {
     
     const [productosBajos, setProductosBajos] = useState(0);
     const [masVendidos, setMasVendidos] = useState<any[]>([]);
+    const [modulosBloqueados, setModulosBloqueados] = useState<Record<string, boolean>>({});
     //const [monto, setMonto] = useState<number | null>(null);
     const montoFijo = TARIFA_BAÑO;
     
@@ -79,10 +80,27 @@ import {
     } catch (e) {
       console.error('Error en obtenerProductosMasVendidos:', e);
     }
+
+    // Cargar módulos bloqueados si no es admin
+    if (user?.role !== 'admin') {
+      try {
+        const modulos = ['ventas', 'productos', 'inventario', 'reportes', 'baños', 'paqueteria'];
+        const estados: Record<string, boolean> = {};
+        
+        for (const modulo of modulos) {
+          const bloqueado = await verificarModuloBloqueado(modulo);
+          estados[modulo] = bloqueado;
+        }
+        
+        setModulosBloqueados(estados);
+      } catch (e) {
+        console.error('Error al verificar módulos bloqueados:', e);
+      }
+    }
   };
 
   cargarDatos();
-}, []);
+}, [user]);
 
 
     return (
@@ -136,42 +154,65 @@ import {
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-700 mb-4">Acceso Rápido</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <QuickAccess
-              icon={<FaCashRegister />}
-              label="Nueva Venta"
-              color="bg-blue-600"
-              onClick={() => setSection('ventas')}
-            />
-            <QuickAccess
-              icon={<FaBoxOpen />}
-              label="Nuevo Producto"
-              color="bg-green-600"
-              onClick={() => setSection('productos')}
-            />
-            <QuickAccess
-              icon={<FaClipboardList />}
-              label="Inventario"
-              color="bg-amber-600"
-              onClick={() => setSection('inventario')}
-            />
-            <QuickAccess
-              icon={<FaChartPie />}
-              label="Reportes"
-              color="bg-purple-600"
-              onClick={() => setSection('reportes')}
-            />
-            <QuickAccess
-              icon={<FaToilet />}
-              label="Registrar Baño"
-              color="bg-blue-400"
-              onClick={() => registrarUsoBaño()}
-            />
-            <QuickAccess
-              icon={<FaArchive />}
-              label="Paqueteria"
-              color="bg-gray-600"
-              onClick={() => setSection('paqueteria')}
-            />
+            {/* Ventas */}
+            {(user?.role === 'admin' || !modulosBloqueados['ventas']) && (
+              <QuickAccess
+                icon={<FaCashRegister />}
+                label="Nueva Venta"
+                color="bg-blue-600"
+                onClick={() => setSection('ventas')}
+              />
+            )}
+            
+            {/* Productos */}
+            {(user?.role === 'admin' || !modulosBloqueados['productos']) && (
+              <QuickAccess
+                icon={<FaBoxOpen />}
+                label="Nuevo Producto"
+                color="bg-green-600"
+                onClick={() => setSection('productos')}
+              />
+            )}
+            
+            {/* Inventario */}
+            {(user?.role === 'admin' || !modulosBloqueados['inventario']) && (
+              <QuickAccess
+                icon={<FaClipboardList />}
+                label="Inventario"
+                color="bg-amber-600"
+                onClick={() => setSection('inventario')}
+              />
+            )}
+            
+            {/* Reportes */}
+            {(user?.role === 'admin' || !modulosBloqueados['reportes']) && (
+              <QuickAccess
+                icon={<FaChartPie />}
+                label="Reportes"
+                color="bg-purple-600"
+                onClick={() => setSection('reportes')}
+              />
+            )}
+            
+            {/* Baños */}
+            {(user?.role === 'admin' || !modulosBloqueados['baños']) && (
+              <QuickAccess
+                icon={<FaToilet />}
+                label="Registrar Baño"
+                color="bg-blue-400"
+                onClick={() => registrarUsoBaño()}
+              />
+            )}
+            
+            {/* Paquetería */}
+            {(user?.role === 'admin' || !modulosBloqueados['paqueteria']) && (
+              <QuickAccess
+                icon={<FaArchive />}
+                label="Paqueteria"
+                color="bg-gray-600"
+                onClick={() => setSection('paqueteria')}
+              />
+            )}
           </div>
         </div>
   
