@@ -12,6 +12,7 @@ import {
   FaToilet,
   FaArchive,
   FaUsers,
+  FaFileAlt,
 } from 'react-icons/fa';
 import { User } from '../hooks/useAuth';
 
@@ -44,7 +45,10 @@ export default function Sidebar({ setSection, user, onLogout }: SidebarProps) {
     { icon: <FaBoxes />, label: 'Inventario', key: 'inventario' },
     { icon: <FaBoxOpen />, label: 'Registrar Productos', key: 'productos' },
     { icon: <FaChartBar />, label: 'Reportes', key: 'reportes' },
-    ...(user?.role === 'admin' ? [{ icon: <FaUsers />, label: 'Usuarios', key: 'usuarios' }] : []),
+    ...(user?.role === 'admin' ? [
+      { icon: <FaUsers />, label: 'Usuarios', key: 'usuarios' },
+      { icon: <FaFileAlt />, label: 'Bitácora Logs', key: 'bitacora' }
+    ] : []),
   ];
 
   return (

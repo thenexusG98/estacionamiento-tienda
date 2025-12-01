@@ -10,6 +10,7 @@ import Baños from './components/Baños';
 import Paqueteria from './components/Paqueteria';
 import Login from './components/Login';
 import Usuarios from './components/Usuarios';
+import BitacoraLogs from './components/BitacoraLogs';
 
 import { useState } from 'react';
 import { useAuth } from './hooks/useAuth';
@@ -51,6 +52,7 @@ export default function App() {
         {section === 'baños' && <Baños />}
         {section === 'paqueteria' && <Paqueteria />}
         {section === 'usuarios' && user?.role === 'admin' && <Usuarios />}
+        {section === 'bitacora' && user?.role === 'admin' && <BitacoraLogs />}
       </div>
     </div>
   );

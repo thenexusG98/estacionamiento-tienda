@@ -1,4 +1,5 @@
 import Database from '@tauri-apps/plugin-sql'
+import { logger, LogCategory } from './Logger'
 
 const dbFile = 'sqlite:data.db'; // nombre del archivo en la raíz de almacenamiento de Tauri
 
@@ -350,20 +351,40 @@ export async function registrarTicketEstacionamiento(fecha_entrada: string, plac
   const db = await getDb();
   const usuario = getUsuarioSesion();
 
-  const result = await db.execute(
-    `INSERT INTO tickets (fecha_entrada, placas, usuario_id, usuario_nombre) VALUES (?, ?, ?, ?)`,
-    [fecha_entrada, placas, usuario?.id || null, usuario?.nombre || null]
-  );
+  try {
+    const result = await db.execute(
+      `INSERT INTO tickets (fecha_entrada, placas, usuario_id, usuario_nombre) VALUES (?, ?, ?, ?)`,
+      [fecha_entrada, placas, usuario?.id || null, usuario?.nombre || null]
+    );
 
-  // Usar lastInsertId del resultado directo en lugar de SELECT
-  const id = result.lastInsertId as number;
-  
-  // Validar que el ID sea válido
-  if (!id || id === 0) {
-    throw new Error('Error al generar el ID del ticket');
+    // Usar lastInsertId del resultado directo en lugar de SELECT
+    const id = result.lastInsertId as number;
+    
+    // Validar que el ID sea válido
+    if (!id || id === 0) {
+      logger.error(LogCategory.TICKETS, 'Error al generar ID del ticket', {
+        fecha_entrada,
+        placas,
+        usuario_id: usuario?.id
+      });
+      throw new Error('Error al generar el ID del ticket');
+    }
+    
+    logger.info(LogCategory.TICKETS, 'Ticket generado exitosamente', {
+      ticket_id: id,
+      placas,
+      usuario: usuario?.nombre
+    });
+    
+    return id;
+  } catch (error) {
+    logger.error(LogCategory.TICKETS, 'Error al registrar ticket', {
+      fecha_entrada,
+      placas,
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    }, error instanceof Error ? error : undefined);
+    throw error;
   }
-  
-  return id;
 }
 
 export async function registrarSalidaTicketEstacionamiento(id: number, fecha_salida: string) {
@@ -784,6 +805,7 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
   `, [usuario]);
 
   if (usuarios.length === 0) {
+    logger.warning(LogCategory.AUTH, 'Intento de login con usuario inexistente', { usuario });
     return null;
   }
 
@@ -795,6 +817,10 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
     const bloqueadoHasta = new Date(usuarioData.bloqueado_hasta);
     
     if (ahora < bloqueadoHasta) {
+      logger.warning(LogCategory.AUTH, 'Intento de login con usuario bloqueado', {
+        usuario,
+        bloqueado_hasta: usuarioData.bloqueado_hasta
+      });
       throw new Error(`Usuario bloqueado hasta ${bloqueadoHasta.toLocaleString()}`);
     } else {
       // Desbloquear usuario si ya pasó el tiempo
@@ -803,6 +829,7 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
         SET bloqueado_hasta = NULL, intentos_fallidos = 0 
         WHERE id = ?
       `, [usuarioData.id]);
+      logger.info(LogCategory.AUTH, 'Usuario desbloqueado automáticamente', { usuario });
     }
   }
 
@@ -823,6 +850,11 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
       const minutos = String(ahora.getMinutes()).padStart(2, '0');
       const segundos = String(ahora.getSeconds()).padStart(2, '0');
       bloqueadoHasta = `${año}-${mes}-${dia} ${horas}:${minutos}:${segundos}`;
+      logger.warning(LogCategory.AUTH, 'Usuario bloqueado por intentos fallidos', {
+        usuario,
+        intentos: nuevosIntentos,
+        bloqueado_hasta: bloqueadoHasta
+      });
     }
 
     await db.execute(`
@@ -830,6 +862,11 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
       SET intentos_fallidos = ?, bloqueado_hasta = ? 
       WHERE id = ?
     `, [nuevosIntentos, bloqueadoHasta, usuarioData.id]);
+
+    logger.warning(LogCategory.AUTH, 'Contraseña incorrecta', {
+      usuario,
+      intentos_fallidos: nuevosIntentos
+    });
 
     if (bloqueadoHasta) {
       throw new Error('Usuario bloqueado por demasiados intentos fallidos');
@@ -845,6 +882,12 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
     SET ultimo_acceso = ?, intentos_fallidos = 0, bloqueado_hasta = NULL 
     WHERE id = ?
   `, [ahora, usuarioData.id]);
+
+  logger.info(LogCategory.AUTH, 'Login exitoso', {
+    usuario,
+    nombre: usuarioData.nombre_completo,
+    rol: usuarioData.rol
+  });
 
   return {
     id: usuarioData.id,

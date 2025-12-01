@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { autenticarUsuario, setUsuarioSesion } from '../lib/db';
+import { logger } from '../lib/Logger';
 
 export interface User {
   id: number;
@@ -37,6 +38,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           nombre: userData.name,
           rol: userData.role
         });
+        // Configurar usuario en logger
+        logger.setUsuario({
+          id: userData.id,
+          nombre: userData.name
+        });
       } catch (error) {
         console.error('Error al parsear usuario guardado:', error);
         localStorage.removeItem('user');
@@ -73,6 +79,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           rol: usuarioData.rol
         });
         
+        // Configurar usuario en logger
+        logger.setUsuario({
+          id: usuarioData.id,
+          nombre: usuarioData.nombre_completo
+        });
+        
         console.log('Login - Sesión establecida con rol:', usuarioData.rol);
         
         return { success: true };
@@ -91,6 +103,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('user');
     // Limpiar usuario en sesión global
     setUsuarioSesion(null);
+    // Limpiar usuario en logger
+    logger.setUsuario(null);
   };
 
   return (

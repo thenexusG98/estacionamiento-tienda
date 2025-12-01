@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { FaPlus, FaTrashAlt } from 'react-icons/fa';
 import { getDb, obtenerProductos, getUsuarioSesion } from '../lib/db';
+import { logger, LogCategory } from '../lib/Logger';
 
 // Función helper para obtener fecha local
 function obtenerFechaLocal(): string {
@@ -29,59 +30,138 @@ export default function Ventas() {
   const [itemsVenta, setItemsVenta] = useState<VentaItem[]>([]);
   const [productoSeleccionadoId, setProductoSeleccionadoId] = useState<number | null>(null);
   const [cantidad, setCantidad] = useState(1);
+  const [procesando, setProcesando] = useState(false);
 
   useEffect(() => {
     const cargarProductos = async () => {
-      const data = await obtenerProductos();
-      setProductos(data);
+      try {
+        const data = await obtenerProductos();
+        setProductos(data);
+      } catch (error) {
+        logger.error(
+          LogCategory.VENTAS,
+          'Error al cargar productos en módulo de ventas',
+          {},
+          error instanceof Error ? error : undefined
+        );
+        console.error('Error al cargar productos:', error);
+      }
     };
     cargarProductos();
   }, []);
 
   const finalizarVenta = async () => {
+    // Validar que no haya una venta en proceso
+    if (procesando) {
+      console.log('Venta ya en proceso, ignorando click adicional');
+      return;
+    }
+
     if (itemsVenta.length === 0) {
       alert('No hay productos agregados a la venta.');
       return;
     }
 
-    const db = await getDb();
-    const fecha = obtenerFechaLocal();
-    const totalVenta = itemsVenta.reduce((sum, item) => sum + item.cantidad * item.producto.precio, 0);
+    // Marcar como procesando INMEDIATAMENTE
+    setProcesando(true);
 
-    // Obtener usuario en sesión
-    const usuario = getUsuarioSesion();
+    try {
+      const db = await getDb();
+      const fecha = obtenerFechaLocal();
+      const totalVenta = itemsVenta.reduce((sum, item) => sum + item.cantidad * item.producto.precio, 0);
 
-    await db.execute(
-      `INSERT INTO ventas_totales (total, fecha, usuario_id, usuario_nombre) VALUES (?, ?, ?, ?)`,
-      [totalVenta, fecha, usuario?.id || null, usuario?.nombre || null]
-    );
+      // Obtener usuario en sesión
+      const usuario = getUsuarioSesion();
 
-    const [{ id: ventaId }] = await db.select<{ id: number }[]>(
-      `SELECT last_insert_rowid() AS id`
-    );
-
-    for (const item of itemsVenta) {
-      const total = item.cantidad * item.producto.precio;
-    
-      // Insertar detalle de venta
-      await db.execute(
-        `INSERT INTO ventas (venta_id, producto, cantidad, precio_unitario, total, usuario_id, usuario_nombre)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [ventaId, item.producto.nombre, item.cantidad, item.producto.precio, total, usuario?.id || null, usuario?.nombre || null]
+      logger.info(
+        LogCategory.VENTAS,
+        `Iniciando registro de venta - Total: $${totalVenta}`,
+        {
+          total: totalVenta,
+          productos: itemsVenta.length,
+          usuario: usuario?.nombre || 'Sin sesión',
+          items: itemsVenta.map(item => ({
+            producto: item.producto.nombre,
+            cantidad: item.cantidad,
+            precio: item.producto.precio
+          }))
+        }
       );
-    
-      // Descontar stock
-      await db.execute(
-        `UPDATE productos SET stock = stock - ? WHERE id = ?`,
-        [item.cantidad, item.producto.id]
+
+      const result = await db.execute(
+        `INSERT INTO ventas_totales (total, fecha, usuario_id, usuario_nombre) VALUES (?, ?, ?, ?)`,
+        [totalVenta, fecha, usuario?.id || null, usuario?.nombre || null]
       );
+
+      const ventaId = result.lastInsertId;
+
+      // Validar que se obtuvo un ID válido
+      if (!ventaId || ventaId === 0) {
+        logger.error(
+          LogCategory.VENTAS,
+          'Error al generar ID de venta - ID inválido',
+          { ventaId, total: totalVenta }
+        );
+        throw new Error('Error al generar ID de venta');
+      }
+
+      for (const item of itemsVenta) {
+        const total = item.cantidad * item.producto.precio;
+      
+        // Insertar detalle de venta
+        await db.execute(
+          `INSERT INTO ventas (venta_id, producto, cantidad, precio_unitario, total, usuario_id, usuario_nombre)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [ventaId, item.producto.nombre, item.cantidad, item.producto.precio, total, usuario?.id || null, usuario?.nombre || null]
+        );
+      
+        // Descontar stock
+        await db.execute(
+          `UPDATE productos SET stock = stock - ? WHERE id = ?`,
+          [item.cantidad, item.producto.id]
+        );
+      }
+
+      logger.info(
+        LogCategory.VENTAS,
+        `✅ Venta registrada exitosamente`,
+        {
+          ventaId,
+          total: totalVenta,
+          productosVendidos: itemsVenta.length,
+          fecha
+        }
+      );
+
+      // Limpiar items ANTES del alert
+      setItemsVenta([]);
+
+      // Recargar productos
+      const nuevosProductos = await obtenerProductos();
+      setProductos(nuevosProductos);
+
+      // Mostrar mensaje de éxito
+      alert('Venta registrada ✅');
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
+      
+      logger.error(
+        LogCategory.VENTAS,
+        `❌ Error al registrar venta: ${errorMsg}`,
+        {
+          productosIntentados: itemsVenta.length,
+          totalIntentado: itemsVenta.reduce((sum, item) => sum + item.cantidad * item.producto.precio, 0)
+        },
+        error instanceof Error ? error : undefined
+      );
+
+      console.error('Error al finalizar venta:', error);
+      alert(`Error al registrar la venta: ${errorMsg}`);
+    } finally {
+      // SIEMPRE desmarcar procesando
+      setProcesando(false);
     }
-
-    alert('Venta registrada ✅');
-    setItemsVenta([]);
-
-    const nuevosProductos = await obtenerProductos();
-    setProductos(nuevosProductos);
   };
 
   const agregarProducto = () => {
@@ -92,7 +172,7 @@ export default function Ventas() {
       alert(`Solo hay ${producto.stock} unidades disponibles de "${producto.nombre}".`);
       return;
     }
-  
+
     setItemsVenta((prev) => [
       ...prev,
       {
@@ -184,9 +264,16 @@ export default function Ventas() {
       {/* Total y botón de finalizar */}
       <div className="flex justify-between items-center">
         <p className="text-xl font-semibold">Total: ${total}</p>
-        <button onClick={finalizarVenta}
-         className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
-          Finalizar Venta
+        <button 
+          onClick={finalizarVenta}
+          disabled={procesando || itemsVenta.length === 0}
+          className={`px-6 py-2 rounded font-semibold transition-all ${
+            procesando || itemsVenta.length === 0
+              ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+              : 'bg-green-600 text-white hover:bg-green-700'
+          }`}
+        >
+          {procesando ? 'Procesando...' : 'Finalizar Venta'}
         </button>
       </div>
     </div>
