@@ -4,6 +4,7 @@ import { createPdfPaqueteria } from "../lib/CreateTicket";
 import { TARIFA_PAQUETERIA } from "../lib/Constantes";
 import { useAuth } from "../hooks/useAuth";
 import { FaBox, FaClock } from "react-icons/fa";
+import { logger, LogCategory } from "../lib/Logger";
 
 // Función helper para obtener fecha y hora local
 function obtenerFechaHoraLocal(): string {
@@ -32,8 +33,18 @@ export default function Paqueteria() {
   }, []);
 
   const cargarPaquetesPendientes = async () => {
-    const paquetes = await obtenerPaquetesPendientesPorUsuario();
-    setPaquetesPendientes(paquetes);
+    try {
+      const paquetes = await obtenerPaquetesPendientesPorUsuario();
+      setPaquetesPendientes(paquetes);
+    } catch (error) {
+      logger.error(
+        LogCategory.PAQUETERIA,
+        'Error al cargar paquetes pendientes',
+        {},
+        error instanceof Error ? error : undefined
+      );
+      console.error('Error al cargar paquetes pendientes:', error);
+    }
   };
 
   const calcularTiempoTranscurrido = (fechaEntrega: string): string => {
@@ -47,39 +58,113 @@ export default function Paqueteria() {
   };
 
   const handleGuardarPaquete = async () => {
-    const fecha = obtenerFechaHoraLocal();
-    const id = await registrarEntregaPaquete(fecha);
+    try {
+      const fecha = obtenerFechaHoraLocal();
+      const id = await registrarEntregaPaquete(fecha);
 
-    // Imprimir 2 tickets
-    await createPdfPaqueteria({id});
+      logger.info(
+        LogCategory.PAQUETERIA,
+        `Paquete registrado para entrega`,
+        {
+          paqueteId: id,
+          fecha,
+          usuario: user?.name || 'Sin sesión'
+        }
+      );
 
-    alert(`✅ Paquete registrado. Ticket ID: ${id}`);
-    
-    // Recargar la lista de paquetes pendientes
-    cargarPaquetesPendientes();
+      // Imprimir 2 tickets
+      await createPdfPaqueteria({id});
+
+      alert(`✅ Paquete registrado. Ticket ID: ${id}`);
+      
+      // Recargar la lista de paquetes pendientes
+      cargarPaquetesPendientes();
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
+      
+      logger.error(
+        LogCategory.PAQUETERIA,
+        `❌ Error al registrar entrega de paquete: ${errorMsg}`,
+        { usuario: user?.name },
+        error instanceof Error ? error : undefined
+      );
+
+      console.error('Error al guardar paquete:', error);
+      alert(`Error al registrar el paquete: ${errorMsg}`);
+    }
   };
 
   const handleRecolectarPaquete = async () => {
     if (!paqueteId) return alert("Ingresa un ID válido");
 
-    const fecha = obtenerFechaHoraLocal();
-    await registrarRecoleccionPaquete(paqueteId, fecha, TARIFA_PAQUETERIA);
+    try {
+      const fecha = obtenerFechaHoraLocal();
+      await registrarRecoleccionPaquete(paqueteId, fecha, TARIFA_PAQUETERIA);
 
-    alert("✅ Recolección registrada correctamente");
-    setPaqueteId(null);
-    
-    // Recargar la lista de paquetes pendientes
-    cargarPaquetesPendientes();
+      logger.info(
+        LogCategory.PAQUETERIA,
+        `✅ Paquete recolectado exitosamente`,
+        {
+          paqueteId,
+          fecha,
+          monto: TARIFA_PAQUETERIA,
+          usuario: user?.name || 'Sin sesión'
+        }
+      );
+
+      alert("✅ Recolección registrada correctamente");
+      setPaqueteId(null);
+      
+      // Recargar la lista de paquetes pendientes
+      cargarPaquetesPendientes();
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
+      
+      logger.error(
+        LogCategory.PAQUETERIA,
+        `❌ Error al registrar recolección de paquete: ${errorMsg}`,
+        { paqueteId, usuario: user?.name },
+        error instanceof Error ? error : undefined
+      );
+
+      console.error('Error al recolectar paquete:', error);
+      alert(`Error al registrar la recolección: ${errorMsg}`);
+    }
   };
 
   const handleCobrarPaquete = async (id: number) => {
-    const fecha = obtenerFechaHoraLocal();
-    await registrarRecoleccionPaquete(id, fecha, TARIFA_PAQUETERIA);
-    
-    alert("✅ Paquete cobrado correctamente");
-    
-    // Recargar la lista de paquetes pendientes
-    cargarPaquetesPendientes();
+    try {
+      const fecha = obtenerFechaHoraLocal();
+      await registrarRecoleccionPaquete(id, fecha, TARIFA_PAQUETERIA);
+
+      logger.info(
+        LogCategory.PAQUETERIA,
+        `✅ Paquete cobrado desde lista pendientes`,
+        {
+          paqueteId: id,
+          fecha,
+          monto: TARIFA_PAQUETERIA,
+          usuario: user?.name || 'Sin sesión'
+        }
+      );
+      
+      alert("✅ Paquete cobrado correctamente");
+      
+      // Recargar la lista de paquetes pendientes
+      cargarPaquetesPendientes();
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
+      
+      logger.error(
+        LogCategory.PAQUETERIA,
+        `❌ Error al cobrar paquete: ${errorMsg}`,
+        { paqueteId: id, usuario: user?.name },
+        error instanceof Error ? error : undefined
+      );
+
+      console.error('Error al cobrar paquete:', error);
+      alert(`Error al cobrar el paquete: ${errorMsg}`);
+    }
   };
 
   return (
