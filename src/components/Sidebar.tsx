@@ -17,6 +17,7 @@ import {
 } from 'react-icons/fa';
 import { User } from '../hooks/useAuth';
 import { verificarModuloBloqueado } from '../lib/db';
+import NotificacionesMensualidad from './NotificacionesMensualidad';
 
 interface SidebarProps {
   setSection: (section: string) => void;
@@ -124,6 +125,11 @@ export default function Sidebar({ setSection, user, onLogout }: SidebarProps) {
       </nav>
 
       <div className="mt-auto pt-4 border-t border-blue-500">
+        {/* Notificaciones de mensualidad */}
+        <div className="mb-4 flex justify-center">
+          <NotificacionesMensualidad />
+        </div>
+
         <div className="flex items-center">
           <div className="w-10 h-10 rounded-full bg-blue-400 flex items-center justify-center">
             <span className="font-bold text-lg">
