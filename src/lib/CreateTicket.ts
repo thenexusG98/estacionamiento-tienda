@@ -58,10 +58,10 @@ interface CreatePdfProps {
     
       const docDefinition: TDocumentDefinitions = {
         pageSize: {
-            width: 100,
-            height: 'auto', // prueba con este valor fijo
+            width: 164, // 58mm para impresora POS
+            height: 'auto',
           },
-          pageMargins: [0, 0, 0, 0],
+          pageMargins: [5, 5, 5, 5], // Márgenes pequeños para POS
           content: [
             {
               text: 'TICKET DE ESTACIONAMIENTO',
@@ -128,11 +128,12 @@ interface CreatePdfProps {
               printable: data,
               type: 'pdf',
               base64: true,
+              showModal: false,
             });
             resolve({
               success: true,
               content: null,
-              message: 'Documento enviado a impresión.',
+              message: 'Ticket impreso correctamente.',
             });
           });
         });
@@ -163,10 +164,10 @@ interface CreatePdfProps {
     
       const docDefinition: TDocumentDefinitions = {
         pageSize: {
-            width: 100,
-            height: 'auto', // prueba con este valor fijo
+            width: 164, // 58mm para impresora POS
+            height: 'auto',
           },
-          pageMargins: [0, 0, 0, 0],
+          pageMargins: [5, 5, 5, 5], // Márgenes pequeños para POS
           content: content,
           styles: { 
             header: { fontSize: 10, bold: true, alignment: 'center' },
@@ -198,6 +199,7 @@ interface CreatePdfProps {
               printable: data,
               type: 'pdf',
               base64: true,
+              showModal: false,
             });
             resolve({
               success: true,
@@ -267,10 +269,11 @@ interface CreatePdfProps {
 
 const docDefinition: TDocumentDefinitions = {
   pageSize: {
-    width: 100,
+    width: 164, // 58mm para impresora POS
     height: 'auto',
   },
-  pageMargins: [0, 0, 0, 0],
+  pageMargins: [5, 5, 5, 5], // Márgenes pequeños para POS
+
   content: [
     ...(ticketBase('Ticket para Cliente') as Content[]),
     ...(ticketBase('Ticket Interno') as Content[]),
@@ -289,7 +292,12 @@ const docDefinition: TDocumentDefinitions = {
   if (output === 'print') {
     return new Promise((resolve) => {
       pdfDoc.getBase64((data) => {
-        printjs({ printable: data, type: 'pdf', base64: true });
+        printjs({ 
+          printable: data, 
+          type: 'pdf', 
+          base64: true,
+          showModal: false,
+        });
         resolve({ success: true, content: null, message: 'Impreso.' });
       });
     });
