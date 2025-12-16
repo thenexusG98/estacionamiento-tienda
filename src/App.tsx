@@ -85,7 +85,7 @@ export default function App() {
   // Si está autenticado, mostrar la aplicación principal
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar setSection={setSection} user={user} onLogout={logout} />
+      <Sidebar setSection={setSection} user={user} onLogout={logout} currentSection={section} />
       <div className="flex-1 overflow-y-auto">
         {/* Verificar si el módulo está bloqueado para empleados */}
         {user?.role !== 'admin' && modulosBloqueados[section] ? (

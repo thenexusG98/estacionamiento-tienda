@@ -22,11 +22,19 @@ interface SidebarProps {
   setSection: (section: string) => void;
   user: User | null;
   onLogout: () => void;
+  currentSection?: string;
 }
 
-export default function Sidebar({ setSection, user, onLogout }: SidebarProps) {
+export default function Sidebar({ setSection, user, onLogout, currentSection }: SidebarProps) {
   const [active, setActive] = useState('dashboard');
   const [modulosBloqueados, setModulosBloqueados] = useState<Record<string, boolean>>({});
+
+  // Sincronizar el estado activo con la sección actual
+  useEffect(() => {
+    if (currentSection) {
+      setActive(currentSection);
+    }
+  }, [currentSection]);
 
   useEffect(() => {
     // Cargar estado de módulos bloqueados solo para empleados
