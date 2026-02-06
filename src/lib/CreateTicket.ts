@@ -4,6 +4,7 @@ import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 import { generarCodigoBarrasBase64 } from './Functions';
 import type { Content } from 'pdfmake/interfaces';
 
+// @ts-ignore - pdfFonts.vfs tiene el tipo correcto pero TypeScript no lo reconoce
 pdfMake.vfs = pdfFonts.vfs;
 pdfMake.fonts = {
   Roboto: {
