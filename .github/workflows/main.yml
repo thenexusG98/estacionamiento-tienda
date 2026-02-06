@@ -125,6 +125,16 @@ jobs:
         with:
           node-version: 20
 
+      # Configurar npm para usar el registry público
+      - name: Configura npm registry público
+        run: |
+          npm config delete registry
+          npm config set registry https://registry.npmjs.org/
+          npm config list
+          # Eliminar package-lock.json para regenerarlo con el registry público
+          rm -f package-lock.json
+        shell: bash
+
       # Instalar jq para todas las plataformas
       - name: Instala jq (Linux)
         if: matrix.platform == 'ubuntu-22.04'
@@ -144,7 +154,8 @@ jobs:
         shell: bash
 
       - name: Instala dependencias de Node.js
-        run: npm ci
+        run: npm install
+        shell: bash
 
       - name: Instala Tauri CLI
         run: npm install -g @tauri-apps/cli
