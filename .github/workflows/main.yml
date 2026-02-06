@@ -157,6 +157,12 @@ jobs:
         run: npm install
         shell: bash
 
+      - name: Actualiza dependencias de Cargo
+        run: |
+          cd src-tauri
+          cargo update
+        shell: bash
+
       - name: Instala Tauri CLI
         run: npm install -g @tauri-apps/cli
         shell: bash
