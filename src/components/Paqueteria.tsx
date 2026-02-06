@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { registrarEntregaPaquete, registrarRecoleccionPaquete, obtenerPaquetesPendientesPorUsuario } from "../lib/db";
+import { registrarEntregaPaquete, registrarRecoleccionPaquete, obtenerPaquetesPendientesPorUsuario, obtenerCostoServicio } from "../lib/db";
 import { createPdfPaqueteria } from "../lib/CreateTicket";
 import { TARIFA_PAQUETERIA } from "../lib/Constantes";
 import { useAuth } from "../hooks/useAuth";
@@ -25,12 +25,24 @@ export default function Paqueteria() {
     fecha_entrega: string;
     usuario_nombre: string;
   }[]>([]);
+  const [tarifaPaqueteria, setTarifaPaqueteria] = useState(TARIFA_PAQUETERIA);
   const { user } = useAuth();
 
   // Cargar paquetes pendientes al montar el componente
   useEffect(() => {
     cargarPaquetesPendientes();
+    cargarTarifa();
   }, []);
+
+  const cargarTarifa = async () => {
+    try {
+      const costo = await obtenerCostoServicio('paqueteria', TARIFA_PAQUETERIA);
+      setTarifaPaqueteria(costo);
+    } catch (error) {
+      console.error('Error al cargar tarifa de paquetería:', error);
+      setTarifaPaqueteria(TARIFA_PAQUETERIA);
+    }
+  };
 
   const cargarPaquetesPendientes = async () => {
     try {
@@ -99,7 +111,7 @@ export default function Paqueteria() {
 
     try {
       const fecha = obtenerFechaHoraLocal();
-      await registrarRecoleccionPaquete(paqueteId, fecha, TARIFA_PAQUETERIA);
+      await registrarRecoleccionPaquete(paqueteId, fecha, tarifaPaqueteria);
 
       logger.info(
         LogCategory.PAQUETERIA,
@@ -107,7 +119,7 @@ export default function Paqueteria() {
         {
           paqueteId,
           fecha,
-          monto: TARIFA_PAQUETERIA,
+          monto: tarifaPaqueteria,
           usuario: user?.name || 'Sin sesión'
         }
       );
@@ -135,7 +147,7 @@ export default function Paqueteria() {
   const handleCobrarPaquete = async (id: number) => {
     try {
       const fecha = obtenerFechaHoraLocal();
-      await registrarRecoleccionPaquete(id, fecha, TARIFA_PAQUETERIA);
+      await registrarRecoleccionPaquete(id, fecha, tarifaPaqueteria);
 
       logger.info(
         LogCategory.PAQUETERIA,
@@ -143,7 +155,7 @@ export default function Paqueteria() {
         {
           paqueteId: id,
           fecha,
-          monto: TARIFA_PAQUETERIA,
+          monto: tarifaPaqueteria,
           usuario: user?.name || 'Sin sesión'
         }
       );
@@ -250,7 +262,7 @@ export default function Paqueteria() {
                       {calcularTiempoTranscurrido(paquete.fecha_entrega)}
                     </td>
                     <td className="px-4 py-2 border-b font-semibold text-green-700">
-                      ${TARIFA_PAQUETERIA.toFixed(2)}
+                      ${tarifaPaqueteria.toFixed(2)}
                     </td>
                     {user?.role === 'admin' && (
                       <td className="px-4 py-2 border-b">{paquete.usuario_nombre}</td>

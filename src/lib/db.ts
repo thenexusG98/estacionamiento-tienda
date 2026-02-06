@@ -167,6 +167,17 @@ export async function getDb() {
     );
   }
 
+  // Tabla de costos de servicios (baño, paquetería, etc.)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS costos_servicios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      servicio TEXT NOT NULL UNIQUE,
+      costo REAL NOT NULL,
+      fecha_modificacion TEXT,
+      usuario_admin TEXT
+    );
+  `);
+
   return db;
 }
 
@@ -363,8 +374,52 @@ export async function registrarProducto(nombre: string, precio: number, stock: n
       `INSERT INTO baños (fecha_hora, monto, usuario_id, usuario_nombre) VALUES (?, ?, ?, ?)`,
       [fechaHora, monto, usuario?.id || null, usuario?.nombre || null]
     );
+}
 
-    
+// Obtener el costo de un servicio desde la BD o retornar el valor por defecto
+export async function obtenerCostoServicio(servicio: string, costoDefault: number): Promise<number> {
+  const db = await getDb();
+  const result = await db.select<{ costo: number }[]>(
+    `SELECT costo FROM costos_servicios WHERE servicio = ?`,
+    [servicio]
+  );
+  
+  if (result.length > 0) {
+    return result[0].costo;
+  }
+  
+  return costoDefault;
+}
+
+// Actualizar o insertar el costo de un servicio
+export async function actualizarCostoServicio(servicio: string, costo: number): Promise<void> {
+  const db = await getDb();
+  const usuario = getUsuarioSesion();
+  const fechaHora = obtenerFechaHoraLocal();
+  
+  await db.execute(
+    `INSERT INTO costos_servicios (servicio, costo, fecha_modificacion, usuario_admin)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(servicio) DO UPDATE SET
+       costo = excluded.costo,
+       fecha_modificacion = excluded.fecha_modificacion,
+       usuario_admin = excluded.usuario_admin`,
+    [servicio, costo, fechaHora, usuario?.nombre || null]
+  );
+  
+  logger.info(
+    LogCategory.SYSTEM,
+    `Costo de servicio actualizado: ${servicio} = $${costo}`,
+    { servicio, costo, usuario: usuario?.nombre || 'Sistema' }
+  );
+}
+
+// Obtener todos los costos de servicios
+export async function obtenerCostosServicios(): Promise<{ servicio: string; costo: number; fecha_modificacion: string | null; usuario_admin: string | null }[]> {
+  const db = await getDb();
+  return await db.select(
+    `SELECT servicio, costo, fecha_modificacion, usuario_admin FROM costos_servicios ORDER BY servicio`
+  );
 }
 
 export async function registrarTicketEstacionamiento(fecha_entrada: string, placas: string) {
