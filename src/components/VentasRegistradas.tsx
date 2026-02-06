@@ -1,13 +1,24 @@
 import { useEffect, useState } from "react";
-import { obtenerTicketsDelDia, obtenerVentasPorDia } from "../lib/db";
+import { obtenerTicketsDelDia, obtenerVentasPorDia, verificarModuloBloqueado } from "../lib/db";
 import ExportCSV from "../lib/Functions";
 import { useAuth } from "../contexts/AuthContext";
+
+// Función helper para obtener fecha local
+function obtenerFechaLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
 
 export default function VentasRegistradas() {
   const { user } = useAuth();
   const [fechaSeleccionada, setFechaSeleccionada] = useState(() =>
-    new Date().toISOString().slice(0, 10)
+    obtenerFechaLocal()
   );
+
+  const [modulosBloqueados, setModulosBloqueados] = useState<Record<string, boolean>>({});
 
   const [datos, setDatos] = useState<{
     tickets: number;
@@ -45,61 +56,91 @@ export default function VentasRegistradas() {
 
       const ventas = await obtenerVentasPorDia(fechaSeleccionada);
       setVentasDia(ventas);
+
+      // Cargar módulos bloqueados si no es admin
+      if (user?.role !== 'admin') {
+        try {
+          const modulos = ['estacionamiento', 'baños', 'ventas', 'paqueteria'];
+          const estados: Record<string, boolean> = {};
+          
+          for (const modulo of modulos) {
+            const bloqueado = await verificarModuloBloqueado(modulo);
+            estados[modulo] = bloqueado;
+          }
+          
+          setModulosBloqueados(estados);
+        } catch (e) {
+          console.error('Error al verificar módulos bloqueados:', e);
+        }
+      }
     };
 
     cargarVentas();
-  }, [fechaSeleccionada]);
+  }, [fechaSeleccionada, user]);
 
   const ventaTotal = datos.tickets + datos.baños + datos.ventas_totales + datos.venta_paqueteria;
 
+  // Filtrar categorías según módulos bloqueados
   const datosTransformados = [
-    {
+    ...(user?.role === 'admin' || !modulosBloqueados['estacionamiento'] ? [{
       fecha: fechaSeleccionada,
       categoria: "estacionamiento",
       total: datos.tickets,
-    },
-    {
+    }] : []),
+    ...(user?.role === 'admin' || !modulosBloqueados['baños'] ? [{
       fecha: fechaSeleccionada,
       categoria: "baños",
       total: datos.baños,
-    },
-    {
+    }] : []),
+    ...(user?.role === 'admin' || !modulosBloqueados['ventas'] ? [{
       fecha: fechaSeleccionada,
       categoria: "tienda",
       total: datos.ventas_totales,
-    },
-    {
+    }] : []),
+    ...(user?.role === 'admin' || !modulosBloqueados['paqueteria'] ? [{
       fecha: fechaSeleccionada,
       categoria: "paqueteria",
       total: datos.venta_paqueteria,
-    },
+    }] : []),
   ];
 
   const data = [
-    ...ventasDia.estacionamiento.map((item) => ({
-      fecha: item.fecha_salida,
-      categoria: "estacionamiento",
-      descripcion: item.placas,
-      total: item.total,
-    })),
-    ...ventasDia.baños.map((item) => ({
-      fecha: item.fecha_hora,
-      categoria: "baños",
-      descripcion: `Baño #${item.id}`,
-      total: item.monto,
-    })),
-    ...ventasDia.tienda.map((item) => ({
-      fecha: item.fecha,
-      categoria: "tienda",
-      descripcion: `${item.producto} x${item.cantidad}`,
-      total: item.total,
-    })),
-    ...ventasDia.paqueteria.map((item) => ({
-      fecha: item.fecha_recoleccion,
-      categoria: "paqueteria",
-      descripcion: `Paquete #${item.id}`,
-      total: item.monto,
-    })),
+    ...(user?.role === 'admin' || !modulosBloqueados['estacionamiento'] 
+      ? ventasDia.estacionamiento.map((item) => ({
+          fecha: item.fecha_salida,
+          categoria: "estacionamiento",
+          descripcion: item.placas,
+          total: item.total,
+        }))
+      : []
+    ),
+    ...(user?.role === 'admin' || !modulosBloqueados['baños']
+      ? ventasDia.baños.map((item) => ({
+          fecha: item.fecha_hora,
+          categoria: "baños",
+          descripcion: `Baño #${item.id}`,
+          total: item.monto,
+        }))
+      : []
+    ),
+    ...(user?.role === 'admin' || !modulosBloqueados['ventas']
+      ? ventasDia.tienda.map((item) => ({
+          fecha: item.fecha,
+          categoria: "tienda",
+          descripcion: `${item.producto} x${item.cantidad}`,
+          total: item.total,
+        }))
+      : []
+    ),
+    ...(user?.role === 'admin' || !modulosBloqueados['paqueteria']
+      ? ventasDia.paqueteria.map((item) => ({
+          fecha: item.fecha_recoleccion,
+          categoria: "paqueteria",
+          descripcion: `Paquete #${item.id}`,
+          total: item.monto,
+        }))
+      : []
+    ),
   ];
 
   return (

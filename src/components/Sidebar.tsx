@@ -1,5 +1,5 @@
 // src/components/Sidebar.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FaStore,
   FaTachometerAlt,
@@ -12,9 +12,12 @@ import {
   FaToilet,
   FaArchive,
   FaUsers,
+  FaFileAlt,
+  FaShieldAlt,
 } from 'react-icons/fa';
 import { User } from '../hooks/useAuth';
 import { APP_VERSION } from '../lib/version';
+import { verificarModuloBloqueado } from '../lib/db';
 
 interface SidebarProps {
   setSection: (section: string) => void;
@@ -24,8 +27,37 @@ interface SidebarProps {
 
 export default function Sidebar({ setSection, user, onLogout }: SidebarProps) {
   const [active, setActive] = useState('dashboard');
+  const [modulosBloqueados, setModulosBloqueados] = useState<Record<string, boolean>>({});
 
-  const handleClick = (section: string) => {
+  useEffect(() => {
+    // Cargar estado de módulos bloqueados solo para empleados
+    if (user?.role !== 'admin') {
+      cargarModulosBloqueados();
+    }
+  }, [user]);
+
+  const cargarModulosBloqueados = async () => {
+    const modulos = ['dashboard', 'estacionamiento', 'baños', 'paqueteria', 'ventas', 'inventario', 'productos', 'reportes'];
+    const estados: Record<string, boolean> = {};
+    
+    for (const modulo of modulos) {
+      try {
+        const bloqueado = await verificarModuloBloqueado(modulo);
+        estados[modulo] = bloqueado;
+      } catch (error) {
+        console.error(`Error al verificar módulo ${modulo}:`, error);
+        estados[modulo] = false;
+      }
+    }
+    
+    setModulosBloqueados(estados);
+  };
+
+  const handleClick = (section: string, bloqueado: boolean) => {
+    if (bloqueado && user?.role !== 'admin') {
+      alert('⚠️ Este módulo no está disponible actualmente. Contacta al administrador.');
+      return;
+    }
     setSection(section);
     setActive(section);
   };
@@ -45,8 +77,17 @@ export default function Sidebar({ setSection, user, onLogout }: SidebarProps) {
     { icon: <FaBoxes />, label: 'Inventario', key: 'inventario' },
     { icon: <FaBoxOpen />, label: 'Registrar Productos', key: 'productos' },
     { icon: <FaChartBar />, label: 'Reportes', key: 'reportes' },
-    ...(user?.role === 'admin' ? [{ icon: <FaUsers />, label: 'Usuarios', key: 'usuarios' }] : []),
+    ...(user?.role === 'admin' ? [
+      { icon: <FaUsers />, label: 'Usuarios', key: 'usuarios' },
+      { icon: <FaShieldAlt />, label: 'Gestión Módulos', key: 'gestion-modulos' },
+      { icon: <FaFileAlt />, label: 'Bitácora Logs', key: 'bitacora' }
+    ] : []),
   ];
+
+  // Filtrar módulos bloqueados para empleados
+  const menuItemsFiltrados = user?.role === 'admin' 
+    ? menuItems 
+    : menuItems.filter(item => !modulosBloqueados[item.key]);
 
   return (
     <div className="sidebar bg-gradient-to-b from-blue-600 to-blue-800 text-white w-64 py-4 px-6 flex flex-col">
@@ -57,19 +98,29 @@ export default function Sidebar({ setSection, user, onLogout }: SidebarProps) {
 
       <nav className="flex-1">
         <ul>
-          {menuItems.map(({ icon, label, key }) => (
-            <li key={key} className="mb-1">
-              <button
-                onClick={() => handleClick(key)}
-                className={`menu-item flex items-center py-3 px-4 rounded-lg w-full text-left ${
-                  active === key ? 'bg-blue-400 bg-opacity-10 border-l-4 border-blue-400' : 'hover:bg-blue-300 hover:bg-opacity-10'
-                }`}
-              >
-                <span className="w-6 mr-3">{icon}</span>
-                <span>{label}</span>
-              </button>
-            </li>
-          ))}
+          {menuItemsFiltrados.map(({ icon, label, key }) => {
+            const bloqueado = modulosBloqueados[key] || false;
+            const esAdmin = user?.role === 'admin';
+            
+            return (
+              <li key={key} className="mb-1">
+                <button
+                  onClick={() => handleClick(key, bloqueado)}
+                  className={`menu-item flex items-center py-3 px-4 rounded-lg w-full text-left relative ${
+                    active === key 
+                      ? 'bg-blue-400 bg-opacity-10 border-l-4 border-blue-400' 
+                      : 'hover:bg-blue-300 hover:bg-opacity-10'
+                  }`}
+                >
+                  <span className="w-6 mr-3">{icon}</span>
+                  <span>{label}</span>
+                  {bloqueado && esAdmin && (
+                    <span className="ml-auto text-xs text-yellow-300">🔒</span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 

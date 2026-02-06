@@ -9,6 +9,18 @@ import {
 } from "../lib/db";
 import {createTicketEstacionamiento} from "../lib/CreateTicket";
 
+// Función helper para obtener fecha y hora local
+function obtenerFechaHoraLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  const horas = String(ahora.getHours()).padStart(2, '0');
+  const minutos = String(ahora.getMinutes()).padStart(2, '0');
+  const segundos = String(ahora.getSeconds()).padStart(2, '0');
+  return `${año}-${mes}-${dia} ${horas}:${minutos}:${segundos}`;
+}
+
 import { FaExclamationTriangle, FaCar, FaClock } from "react-icons/fa";
 
 import { TARIFA_ESTACIONAMIENTO_POR_HORA } from "../lib/Constantes";
@@ -68,8 +80,15 @@ export default function Estacionamiento() {
 
     setGenerando(true);
     try {
-      const fecha = new Date();
-      const id = await registrarTicketEstacionamiento(fecha.toISOString(), placas);
+      const fecha = obtenerFechaHoraLocal();
+      const id = await registrarTicketEstacionamiento(fecha, placas);
+      
+      // Validar que se obtuvo un ID válido
+      if (!id || id === 0) {
+        throw new Error('No se pudo generar el ID del ticket');
+      }
+      
+      console.log('Ticket ID generado:', id);
       const placasFormatted = placas.toUpperCase();
       await createTicketEstacionamiento({ id, placasFormatted }, "print");
       alert(`Ticket generado e impreso. ID: ${id}`);
@@ -77,7 +96,7 @@ export default function Estacionamiento() {
       await cargarTicketsPendientes();
     } catch (error) {
       console.error("Error al generar ticket:", error);
-      alert("Ocurrió un error al generar el ticket.");
+      alert(`Ocurrió un error al generar el ticket: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setGenerando(false);
       setPlacas(null);
@@ -128,7 +147,7 @@ export default function Estacionamiento() {
     const ratePerHour = TARIFA_ESTACIONAMIENTO_POR_HORA; // Example rate
     const totalFee = diffHours * ratePerHour;
 
-    await registrarSalidaTicketEstacionamiento(id, endTime.toISOString());
+    await registrarSalidaTicketEstacionamiento(id, obtenerFechaHoraLocal());
 
     setElapsedTime(`${diffHours} horas`);
     setFee(totalFee);

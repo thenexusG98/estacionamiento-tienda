@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - feature/implementacion-actualizaciones-automaticas
 
 jobs:
   release:
@@ -29,14 +30,29 @@ jobs:
       - name: Calcula el siguiente tag semver
         id: semver
         run: |
-          # Obtén el último tag con formato vX.Y.Z
-          LAST_TAG=$(git tag --list "v*" --sort=-v:refname | head -n 1)
-          if [[ -z "$LAST_TAG" ]]; then
-            LAST_TAG="v0.1.0"
+          # Determina el prefijo del tag según la rama
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          if [[ "$BRANCH_NAME" == "feature/implementacion-actualizaciones-automaticas" ]]; then
+            TAG_PREFIX="test-"
+            echo "Es rama de pruebas, usando prefijo: $TAG_PREFIX"
+          else
+            TAG_PREFIX=""
+            echo "Es rama main, sin prefijo"
           fi
 
-          # Quita la 'v'
-          LAST_VERSION=${LAST_TAG#v}
+          # Obtén el último tag con el prefijo correspondiente
+          if [[ -n "$TAG_PREFIX" ]]; then
+            LAST_TAG=$(git tag --list "${TAG_PREFIX}v*" --sort=-v:refname | head -n 1)
+          else
+            LAST_TAG=$(git tag --list "v*" --sort=-v:refname | grep -v "^test-" | head -n 1)
+          fi
+          
+          if [[ -z "$LAST_TAG" ]]; then
+            LAST_TAG="${TAG_PREFIX}v0.1.0"
+          fi
+
+          # Quita el prefijo y la 'v'
+          LAST_VERSION=${LAST_TAG#${TAG_PREFIX}v}
 
           # Separa en partes
           IFS='.' read -r MAJOR MINOR PATCH <<< "$LAST_VERSION"
@@ -44,12 +60,17 @@ jobs:
           # Aumenta el patch
           PATCH=$((PATCH + 1))
           NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          NEW_TAG="v$NEW_VERSION"
+          NEW_TAG="${TAG_PREFIX}v$NEW_VERSION"
 
           echo "LAST_TAG=$LAST_TAG" >> $GITHUB_ENV
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+          echo "TAG_PREFIX=$TAG_PREFIX" >> $GITHUB_ENV
           echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          
+          echo "📌 Último tag: $LAST_TAG"
+          echo "📌 Nuevo tag: $NEW_TAG"
+          echo "📌 Nueva versión: $NEW_VERSION"
         shell: bash
 
       # 2. Actualiza package.json a la nueva versión (opcional pero recomendado)
@@ -153,6 +174,8 @@ jobs:
       - name: Crea y sube el nuevo tag después de compilación exitosa
         if: matrix.platform == 'ubuntu-22.04'
         run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          
           if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
             echo "El tag $NEW_TAG ya existe, no se crea uno nuevo."
           else
@@ -160,7 +183,7 @@ jobs:
             git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "Nada que commitear"
             git tag "$NEW_TAG"
             git push origin "$NEW_TAG"
-            git push origin main
+            git push origin "$BRANCH_NAME"
             echo "✅ Tag $NEW_TAG creado y subido después de compilación exitosa."
           fi
         shell: bash
@@ -169,8 +192,15 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.NEW_TAG }}
+          name: ${{ env.TAG_PREFIX && 'TEST Release' || 'Release' }} ${{ env.NEW_VERSION }}
+          body: |
+            ${{ env.TAG_PREFIX && '⚠️ **RELEASE DE PRUEBAS** - Para testing de actualizaciones automáticas' || '✅ Release oficial' }}
+            
+            Versión: ${{ env.NEW_VERSION }}
+            Tag: ${{ env.NEW_TAG }}
+            Rama: ${{ github.ref_name }}
           draft: false
-          prerelease: false
+          prerelease: ${{ env.TAG_PREFIX != '' }}
           files: |
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/appimage/*.AppImage

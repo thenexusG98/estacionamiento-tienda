@@ -1,6 +1,27 @@
 import Database from '@tauri-apps/plugin-sql'
+import { logger, LogCategory } from './Logger'
 
 const dbFile = 'sqlite:data.db'; // nombre del archivo en la raíz de almacenamiento de Tauri
+
+// Funciones helper para manejar fechas en hora local
+function obtenerFechaLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  return `${año}-${mes}-${dia}`;
+}
+
+function obtenerFechaHoraLocal(): string {
+  const ahora = new Date();
+  const año = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+  const dia = String(ahora.getDate()).padStart(2, '0');
+  const horas = String(ahora.getHours()).padStart(2, '0');
+  const minutos = String(ahora.getMinutes()).padStart(2, '0');
+  const segundos = String(ahora.getSeconds()).padStart(2, '0');
+  return `${año}-${mes}-${dia} ${horas}:${minutos}:${segundos}`;
+}
 
 // Variable global para almacenar el usuario actual en sesión
 let usuarioEnSesion: { id: number; usuario: string; nombre: string; rol?: string } | null = null;
@@ -123,8 +144,39 @@ export async function getDb() {
       await db.execute(`
         INSERT INTO usuarios (usuario, password, nombre_completo, email, rol, fecha_creacion)
         VALUES ('admin', 'admin123', 'Administrador', 'admin@tienda.com', 'admin', ?)
-      `, [new Date().toISOString()]);
+      `, [obtenerFechaHoraLocal()]);
     }
+
+  // Tabla de módulos bloqueados
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS modulos_bloqueados (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      modulo TEXT NOT NULL UNIQUE,
+      bloqueado INTEGER NOT NULL DEFAULT 0,
+      fecha_modificacion TEXT,
+      usuario_admin TEXT
+    );
+  `);
+
+  // Insertar módulos por defecto si no existen
+  const modulos = ['dashboard', 'estacionamiento', 'baños', 'paqueteria', 'ventas', 'inventario', 'productos', 'reportes'];
+  for (const modulo of modulos) {
+    await db.execute(
+      `INSERT OR IGNORE INTO modulos_bloqueados (modulo, bloqueado) VALUES (?, 0)`,
+      [modulo]
+    );
+  }
+
+  // Tabla de costos de servicios (baño, paquetería, etc.)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS costos_servicios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      servicio TEXT NOT NULL UNIQUE,
+      costo REAL NOT NULL,
+      fecha_modificacion TEXT,
+      usuario_admin TEXT
+    );
+  `);
 
   return db;
 }
@@ -239,7 +291,7 @@ export async function registrarProducto(nombre: string, precio: number, stock: n
   
   export async function obtenerResumenDelDia() {
     const db = await getDb();
-    const fecha = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const fecha = obtenerFechaLocal(); // YYYY-MM-DD
     const usuario = getUsuarioSesion();
     
     // Si es admin, no filtrar por usuario. Si es empleado, solo mostrar su resumen
@@ -322,21 +374,92 @@ export async function registrarProducto(nombre: string, precio: number, stock: n
       `INSERT INTO baños (fecha_hora, monto, usuario_id, usuario_nombre) VALUES (?, ?, ?, ?)`,
       [fechaHora, monto, usuario?.id || null, usuario?.nombre || null]
     );
+}
 
-    
+// Obtener el costo de un servicio desde la BD o retornar el valor por defecto
+export async function obtenerCostoServicio(servicio: string, costoDefault: number): Promise<number> {
+  const db = await getDb();
+  const result = await db.select<{ costo: number }[]>(
+    `SELECT costo FROM costos_servicios WHERE servicio = ?`,
+    [servicio]
+  );
+  
+  if (result.length > 0) {
+    return result[0].costo;
+  }
+  
+  return costoDefault;
+}
+
+// Actualizar o insertar el costo de un servicio
+export async function actualizarCostoServicio(servicio: string, costo: number): Promise<void> {
+  const db = await getDb();
+  const usuario = getUsuarioSesion();
+  const fechaHora = obtenerFechaHoraLocal();
+  
+  await db.execute(
+    `INSERT INTO costos_servicios (servicio, costo, fecha_modificacion, usuario_admin)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(servicio) DO UPDATE SET
+       costo = excluded.costo,
+       fecha_modificacion = excluded.fecha_modificacion,
+       usuario_admin = excluded.usuario_admin`,
+    [servicio, costo, fechaHora, usuario?.nombre || null]
+  );
+  
+  logger.info(
+    LogCategory.SYSTEM,
+    `Costo de servicio actualizado: ${servicio} = $${costo}`,
+    { servicio, costo, usuario: usuario?.nombre || 'Sistema' }
+  );
+}
+
+// Obtener todos los costos de servicios
+export async function obtenerCostosServicios(): Promise<{ servicio: string; costo: number; fecha_modificacion: string | null; usuario_admin: string | null }[]> {
+  const db = await getDb();
+  return await db.select(
+    `SELECT servicio, costo, fecha_modificacion, usuario_admin FROM costos_servicios ORDER BY servicio`
+  );
 }
 
 export async function registrarTicketEstacionamiento(fecha_entrada: string, placas: string) {
   const db = await getDb();
   const usuario = getUsuarioSesion();
 
-  await db.execute(
-    `INSERT INTO tickets (fecha_entrada, placas, usuario_id, usuario_nombre) VALUES (?, ?, ?, ?)`,
-    [fecha_entrada, placas, usuario?.id || null, usuario?.nombre || null]
-  );
+  try {
+    const result = await db.execute(
+      `INSERT INTO tickets (fecha_entrada, placas, usuario_id, usuario_nombre) VALUES (?, ?, ?, ?)`,
+      [fecha_entrada, placas, usuario?.id || null, usuario?.nombre || null]
+    );
 
-  const [{ id }] = await db.select<{ id: number }[]>(`SELECT last_insert_rowid() AS id`);
-  return id;
+    // Usar lastInsertId del resultado directo en lugar de SELECT
+    const id = result.lastInsertId as number;
+    
+    // Validar que el ID sea válido
+    if (!id || id === 0) {
+      logger.error(LogCategory.TICKETS, 'Error al generar ID del ticket', {
+        fecha_entrada,
+        placas,
+        usuario_id: usuario?.id
+      });
+      throw new Error('Error al generar el ID del ticket');
+    }
+    
+    logger.info(LogCategory.TICKETS, 'Ticket generado exitosamente', {
+      ticket_id: id,
+      placas,
+      usuario: usuario?.nombre
+    });
+    
+    return id;
+  } catch (error) {
+    logger.error(LogCategory.TICKETS, 'Error al registrar ticket', {
+      fecha_entrada,
+      placas,
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    }, error instanceof Error ? error : undefined);
+    throw error;
+  }
 }
 
 export async function registrarSalidaTicketEstacionamiento(id: number, fecha_salida: string) {
@@ -361,7 +484,7 @@ export async function consultaFechaEntradaTicket(id: number) {
 
 export async function registrarPago(idTicket: number, total: number) {
   const db = await getDb();
-  const fechaSalida = new Date().toISOString();
+  const fechaSalida = obtenerFechaHoraLocal();
 
   await db.execute(
     `UPDATE tickets SET fecha_salida = ?, total = ? WHERE id = ?`,
@@ -399,23 +522,38 @@ export async function obtenerTicketsPendientesPorUsuario(): Promise<{
   const esAdmin = usuario?.rol === 'admin';
   const usuarioIdFiltro = esAdmin ? null : usuario?.id || null;
 
-  const query = `
+  if (esAdmin){
+    const query = `
     SELECT id, placas, fecha_entrada, fecha_salida, usuario_nombre
     FROM tickets
     WHERE total IS NULL OR total = ''
-    ${!esAdmin ? 'AND usuario_id = ?' : ''}
+    ORDER BY fecha_entrada DESC
+  `;
+    return await db.select<{
+      id: number;
+      placas: string;
+      fecha_entrada: string;
+      fecha_salida: string | null;
+      usuario_nombre: string;
+    }[]>(query);
+  }
+
+  const query = `
+    SELECT id, placas, fecha_entrada, fecha_salida, usuario_nombre
+    FROM tickets
+    WHERE usuario_id = ?
+    AND total IS NULL OR total = ''
     ORDER BY fecha_entrada DESC
   `;
 
-  const tickets = await db.select<{
+  return await db.select<{
     id: number;
     placas: string;
     fecha_entrada: string;
     fecha_salida: string | null;
     usuario_nombre: string;
-  }[]>(query, esAdmin ? [] : [usuarioIdFiltro]);
+  }[]>(query, [usuarioIdFiltro]);
 
-  return tickets;
 }
 
 // Obtener paquetes pendientes de cobro por usuario
@@ -431,21 +569,43 @@ export async function obtenerPaquetesPendientesPorUsuario(): Promise<{
   const esAdmin = usuario?.rol === 'admin';
   const usuarioIdFiltro = esAdmin ? null : usuario?.id || null;
 
+  if (esAdmin){
+    console.log("soy admin");
+    
+    const query = `
+      SELECT id, fecha_entrega, usuario_nombre
+      FROM paqueteria
+      WHERE monto IS NULL OR monto = ''
+      ORDER BY fecha_entrega DESC
+    `;
+
+    return await db.select<{
+      id: number;
+      fecha_entrega: string;
+      usuario_nombre: string;
+    }[]>(query);
+  }
+
+  console.log("usuario: " + usuario?.id);
+  
   const query = `
     SELECT id, fecha_entrega, usuario_nombre
     FROM paqueteria
-    WHERE monto IS NULL OR monto = ''
-    ${!esAdmin ? 'AND usuario_id = ?' : ''}
+    WHERE usuario_id = ?
+    AND monto IS NULL OR monto = ''
     ORDER BY fecha_entrega DESC
   `;
 
-  const paquetes = await db.select<{
+  const paquete = await db.select<{
     id: number;
     fecha_entrega: string;
     usuario_nombre: string;
-  }[]>(query, esAdmin ? [] : [usuarioIdFiltro]);
+  }[]>(query, [usuarioIdFiltro]);
 
-  return paquetes;
+  console.log(paquete);
+
+  return paquete;
+  
 }
 
 
@@ -720,6 +880,7 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
   `, [usuario]);
 
   if (usuarios.length === 0) {
+    logger.warning(LogCategory.AUTH, 'Intento de login con usuario inexistente', { usuario });
     return null;
   }
 
@@ -731,6 +892,10 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
     const bloqueadoHasta = new Date(usuarioData.bloqueado_hasta);
     
     if (ahora < bloqueadoHasta) {
+      logger.warning(LogCategory.AUTH, 'Intento de login con usuario bloqueado', {
+        usuario,
+        bloqueado_hasta: usuarioData.bloqueado_hasta
+      });
       throw new Error(`Usuario bloqueado hasta ${bloqueadoHasta.toLocaleString()}`);
     } else {
       // Desbloquear usuario si ya pasó el tiempo
@@ -739,6 +904,7 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
         SET bloqueado_hasta = NULL, intentos_fallidos = 0 
         WHERE id = ?
       `, [usuarioData.id]);
+      logger.info(LogCategory.AUTH, 'Usuario desbloqueado automáticamente', { usuario });
     }
   }
 
@@ -752,7 +918,18 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
     if (nuevosIntentos >= 5) {
       const ahora = new Date();
       ahora.setMinutes(ahora.getMinutes() + 30);
-      bloqueadoHasta = ahora.toISOString();
+      const año = ahora.getFullYear();
+      const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+      const dia = String(ahora.getDate()).padStart(2, '0');
+      const horas = String(ahora.getHours()).padStart(2, '0');
+      const minutos = String(ahora.getMinutes()).padStart(2, '0');
+      const segundos = String(ahora.getSeconds()).padStart(2, '0');
+      bloqueadoHasta = `${año}-${mes}-${dia} ${horas}:${minutos}:${segundos}`;
+      logger.warning(LogCategory.AUTH, 'Usuario bloqueado por intentos fallidos', {
+        usuario,
+        intentos: nuevosIntentos,
+        bloqueado_hasta: bloqueadoHasta
+      });
     }
 
     await db.execute(`
@@ -760,6 +937,11 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
       SET intentos_fallidos = ?, bloqueado_hasta = ? 
       WHERE id = ?
     `, [nuevosIntentos, bloqueadoHasta, usuarioData.id]);
+
+    logger.warning(LogCategory.AUTH, 'Contraseña incorrecta', {
+      usuario,
+      intentos_fallidos: nuevosIntentos
+    });
 
     if (bloqueadoHasta) {
       throw new Error('Usuario bloqueado por demasiados intentos fallidos');
@@ -769,12 +951,18 @@ export async function autenticarUsuario(usuario: string, password: string): Prom
   }
 
   // Login exitoso - actualizar último acceso y resetear intentos
-  const ahora = new Date().toISOString();
+  const ahora = obtenerFechaHoraLocal();
   await db.execute(`
     UPDATE usuarios 
     SET ultimo_acceso = ?, intentos_fallidos = 0, bloqueado_hasta = NULL 
     WHERE id = ?
   `, [ahora, usuarioData.id]);
+
+  logger.info(LogCategory.AUTH, 'Login exitoso', {
+    usuario,
+    nombre: usuarioData.nombre_completo,
+    rol: usuarioData.rol
+  });
 
   return {
     id: usuarioData.id,
@@ -809,7 +997,7 @@ export async function crearUsuario(
     throw new Error('El usuario ya existe');
   }
 
-  const fechaCreacion = new Date().toISOString();
+  const fechaCreacion = obtenerFechaHoraLocal();
   const result = await db.execute(`
     INSERT INTO usuarios (usuario, password, nombre_completo, email, rol, fecha_creacion)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -1150,4 +1338,54 @@ export async function obtenerEstadisticasUsuario(usuarioId: number, fechaInicio?
       (bañosStats[0]?.total_ingresos || 0) +
       (paqueteriaStats[0]?.total_ingresos || 0)
   };
+}
+
+// ============================================
+// FUNCIONES PARA GESTIONAR MÓDULOS BLOQUEADOS
+// ============================================
+
+export async function obtenerModulosBloqueados() {
+  const db = await getDb();
+  const modulos = await db.select<{
+    id: number;
+    modulo: string;
+    bloqueado: number;
+    fecha_modificacion: string | null;
+    usuario_admin: string | null;
+  }[]>(`SELECT * FROM modulos_bloqueados ORDER BY modulo`);
+  
+  return modulos;
+}
+
+export async function toggleModuloBloqueado(modulo: string, bloqueado: boolean) {
+  const db = await getDb();
+  const usuario = getUsuarioSesion();
+  const fecha = obtenerFechaHoraLocal();
+  
+  await db.execute(
+    `UPDATE modulos_bloqueados 
+     SET bloqueado = ?, fecha_modificacion = ?, usuario_admin = ? 
+     WHERE modulo = ?`,
+    [bloqueado ? 1 : 0, fecha, usuario?.nombre || 'Admin', modulo]
+  );
+
+  logger.info(
+    LogCategory.SYSTEM,
+    `Módulo ${bloqueado ? 'bloqueado' : 'desbloqueado'}: ${modulo}`,
+    {
+      modulo,
+      estado: bloqueado ? 'bloqueado' : 'desbloqueado',
+      admin: usuario?.nombre || 'Admin'
+    }
+  );
+}
+
+export async function verificarModuloBloqueado(modulo: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.select<{ bloqueado: number }[]>(
+    `SELECT bloqueado FROM modulos_bloqueados WHERE modulo = ?`,
+    [modulo]
+  );
+  
+  return result[0]?.bloqueado === 1;
 }
