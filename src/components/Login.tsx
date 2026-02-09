@@ -46,7 +46,7 @@ export default function Login() {
             </div>
           </div>
           <h2 className="text-4xl font-bold text-white mb-2 tracking-tight">
-            Bienvenido de vuelta
+            Bienvenido
           </h2>
           <p className="text-blue-300 text-lg">
             Sistema de Gestión Integral
