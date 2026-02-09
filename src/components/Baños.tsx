@@ -14,7 +14,6 @@ function obtenerFechaLocal(): string {
 
 export default function Baños() {
   const [montoFijo, setMontoFijo] = useState(TARIFA_BAÑO);
-  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     cargarCosto();
@@ -27,8 +26,6 @@ export default function Baños() {
     } catch (error) {
       console.error('Error al cargar costo del baño:', error);
       setMontoFijo(TARIFA_BAÑO); // Usar valor por defecto en caso de error
-    } finally {
-      setCargando(false);
     }
   };
   const [successMessage, setSuccessMessage] = useState('');

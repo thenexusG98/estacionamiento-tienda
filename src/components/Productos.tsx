@@ -1,5 +1,5 @@
 // src/components/Productos.tsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { registrarProducto } from '../lib/db';
 import { FaBox, FaTag, FaDollarSign, FaBarcode, FaPlus, FaCheck } from 'react-icons/fa';
 

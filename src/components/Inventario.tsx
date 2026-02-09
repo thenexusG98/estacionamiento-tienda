@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FaEdit, FaTrashAlt, FaBox, FaPlus, FaSearch, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaEdit, FaTrashAlt, FaBox, FaSearch, FaCheck, FaTimes } from 'react-icons/fa';
 import { obtenerProductos, actualizarProducto, eliminarProducto } from '../lib/db';
 
 type Producto = {

@@ -3,7 +3,7 @@ import { registrarEntregaPaquete, registrarRecoleccionPaquete, obtenerPaquetesPe
 import { createPdfPaqueteria } from "../lib/CreateTicket";
 import { TARIFA_PAQUETERIA } from "../lib/Constantes";
 import { useAuth } from "../hooks/useAuth";
-import { FaBox, FaClock, FaPlus, FaQrcode, FaDollarSign, FaCheck, FaTimes } from "react-icons/fa";
+import { FaBox, FaClock, FaPlus, FaQrcode, FaDollarSign, FaCheck } from "react-icons/fa";
 import { logger, LogCategory } from "../lib/Logger";
 
 // Función helper para obtener fecha y hora local

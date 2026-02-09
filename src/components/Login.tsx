@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { FaStore, FaUser, FaLock, FaEye, FaEyeSlash, FaShieldAlt, FaCheckCircle } from 'react-icons/fa';
 import { useAuth } from '../hooks/useAuth';
-import { APP_VERSION } from '../lib/version';
 
 export default function Login() {
   const [username, setUsername] = useState('');
