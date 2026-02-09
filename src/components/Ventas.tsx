@@ -1,5 +1,5 @@
 // src/components/Ventas.tsx
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { FaPlus, FaTrashAlt, FaShoppingCart, FaCheck, FaDollarSign, FaBox } from 'react-icons/fa';
 import { getDb, obtenerProductos, getUsuarioSesion } from '../lib/db';
 import { logger, LogCategory } from '../lib/Logger';

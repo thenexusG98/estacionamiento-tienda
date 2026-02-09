@@ -10,7 +10,6 @@ import Baños from './components/Baños';
 import Paqueteria from './components/Paqueteria';
 import Login from './components/Login';
 import Usuarios from './components/Usuarios';
-import UpdateChecker from './components/UpdateChecker';
 import BitacoraLogs from './components/BitacoraLogs';
 import GestionModulos from './components/GestionModulos';
 
