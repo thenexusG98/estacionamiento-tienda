@@ -26,14 +26,12 @@ import {
     FaChartPie,
     FaStar,
     FaToilet,
-    FaArchive
+    FaArchive,
+    FaTachometerAlt,
+    FaCheck,
+    FaTrophy
   } from 'react-icons/fa';
   
-  const currentDate = new Date().toLocaleDateString('es-MX', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
   
   export default function Dashboard({ setSection }: { setSection: (section: string) => void }) {
     const { user } = useAuth();
@@ -43,19 +41,28 @@ import {
     const [productosBajos, setProductosBajos] = useState(0);
     const [masVendidos, setMasVendidos] = useState<any[]>([]);
     const [modulosBloqueados, setModulosBloqueados] = useState<Record<string, boolean>>({});
-    //const [monto, setMonto] = useState<number | null>(null);
+    const [successMessage, setSuccessMessage] = useState('');
     const montoFijo = TARIFA_BAÑO;
     
-    const registrarUsoBaño = async () => {
+    const currentDate = new Date().toLocaleDateString('es-MX', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
 
-        /*if (monto === null) {
-          alert('Por favor, ingrese un monto válido.');
-          return;
-        }*/
-    
+    const registrarUsoBaño = async () => {
         const fechaHora = obtenerFechaLocal();
         await registrarBaño(fechaHora, montoFijo);
-        alert('Uso del baño registrado correctamente.');
+        
+        alert(`✅ ¡USO DE BAÑO REGISTRADO EXITOSAMENTE!\n\n🚻 Detalles:\n• Monto Cobrado: $${montoFijo.toFixed(2)}\n• Fecha: ${fechaHora}\n\n¡Registro completado!`);
+        
+        setSuccessMessage('✅ Uso de baño registrado correctamente');
+        setTimeout(() => setSuccessMessage(''), 3000);
+        
+        // Recargar datos
+        const res = await obtenerResumenDelDia();
+        setResumen(res);
       };
 
     useEffect(() => {
@@ -104,180 +111,233 @@ import {
 
 
     return (
-      <div className="p-6">
-        {/* Título */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex flex-col">
-            <h2 className="text-2xl font-bold text-gray-800">Dashboard</h2>
-            {user?.role === 'admin' ? (
-              <span className="text-sm text-blue-600 font-medium mt-1">
-                📊 Resumen General (Todos los usuarios)
-              </span>
-            ) : (
-              <span className="text-sm text-gray-600 font-medium mt-1">
-                👤 Mi Resumen Personal
-              </span>
-            )}
-          </div>
-          <div className="flex items-center">
-            <span className="text-gray-500 mr-2">Hoy:</span>
-            <span className="font-medium">{currentDate}</span>
-          </div>
-        </div>
-  
-        {/* Tarjetas resumen */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <SummaryCard
-            icon={<FaDollarSign className="text-blue-600 text-xl" />}
-            bgColor="bg-blue-100"
-            title="Ventas del día"
-            value={`$${(resumen.total || 0).toFixed(2)}`}
-            subtitle="Ventas del dia de hoy"
-          />
-          <SummaryCard
-            icon={<FaShoppingCart className="text-green-600 text-xl" />}
-            bgColor="bg-green-100"
-            title="Transacciones"
-            value={(resumen.transaccion || 0).toFixed(2)}
-            subtitle="Total de ventas realizadas hoy"
-          />
-          <SummaryCard
-            icon={<FaExclamationTriangle className="text-red-600 text-xl" />}
-            bgColor="bg-red-100"
-            title="Productos bajos"
-            value={productosBajos.toString()}
-            subtitle="Productos con stock bajo"
-          />
-        </div>
-  
-        {/* Accesos rápidos */}
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6 lg:p-8">
+        {/* Encabezado */}
         <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">Acceso Rápido</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Ventas */}
-            {(user?.role === 'admin' || !modulosBloqueados['ventas']) && (
-              <QuickAccess
-                icon={<FaCashRegister />}
-                label="Nueva Venta"
-                color="bg-blue-600"
-                onClick={() => setSection('ventas')}
-              />
-            )}
-            
-            {/* Productos */}
-            {(user?.role === 'admin' || !modulosBloqueados['productos']) && (
-              <QuickAccess
-                icon={<FaBoxOpen />}
-                label="Nuevo Producto"
-                color="bg-green-600"
-                onClick={() => setSection('productos')}
-              />
-            )}
-            
-            {/* Inventario */}
-            {(user?.role === 'admin' || !modulosBloqueados['inventario']) && (
-              <QuickAccess
-                icon={<FaClipboardList />}
-                label="Inventario"
-                color="bg-amber-600"
-                onClick={() => setSection('inventario')}
-              />
-            )}
-            
-            {/* Reportes */}
-            {(user?.role === 'admin' || !modulosBloqueados['reportes']) && (
-              <QuickAccess
-                icon={<FaChartPie />}
-                label="Reportes"
-                color="bg-purple-600"
-                onClick={() => setSection('reportes')}
-              />
-            )}
-            
-            {/* Baños */}
-            {(user?.role === 'admin' || !modulosBloqueados['baños']) && (
-              <QuickAccess
-                icon={<FaToilet />}
-                label="Registrar Baño"
-                color="bg-blue-400"
-                onClick={() => registrarUsoBaño()}
-              />
-            )}
-            
-            {/* Paquetería */}
-            {(user?.role === 'admin' || !modulosBloqueados['paqueteria']) && (
-              <QuickAccess
-                icon={<FaArchive />}
-                label="Paqueteria"
-                color="bg-gray-600"
-                onClick={() => setSection('paqueteria')}
-              />
-            )}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600 p-3 rounded-lg">
+                <FaTachometerAlt className="text-white text-2xl" />
+              </div>
+              <div>
+                <h1 className="text-3xl lg:text-4xl font-bold text-gray-800">Dashboard</h1>
+                <p className="text-gray-600 text-sm mt-1">Vista general de tu negocio</p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end">
+              {user?.role === 'admin' ? (
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 rounded-lg shadow-md">
+                  <span className="text-sm font-semibold flex items-center gap-2">
+                    📊 Vista Administrador
+                  </span>
+                  <p className="text-xs opacity-90">Datos de todos los usuarios</p>
+                </div>
+              ) : (
+                <div className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-4 py-2 rounded-lg shadow-md">
+                  <span className="text-sm font-semibold flex items-center gap-2">
+                    👤 Mi Dashboard
+                  </span>
+                  <p className="text-xs opacity-90">Vista personal</p>
+                </div>
+              )}
+              <p className="text-sm text-gray-500 mt-2">{currentDate}</p>
+            </div>
           </div>
         </div>
+
+        {/* Mensaje de éxito */}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3 animate-slideDown">
+            <FaCheck className="text-green-600 text-lg" />
+            <p className="text-green-700 font-medium">{successMessage}</p>
+          </div>
+        )}
   
-        {/* Productos más vendidos (muestra fija por ahora) */}
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-md">
-          <h3 className="text-lg font-semibold text-gray-700 mb-4">
-            Productos Más Vendidos
-          </h3>
-          {masVendidos.length === 0 ? (
-            <p className="text-gray-500">No hay ventas registradas aún.</p>
-          ) : (
-            masVendidos.map((p, index) => (
-              <div className="flex items-center mb-4" key={index}>
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-4">
-                  <FaStar className="text-blue-500" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between font-medium">
-                    <span>{p.producto}</span>
-                    <span>{p.cantidad_total} unidades</span>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    Total vendido: ${p.total_vendido.toFixed(2)}
-                  </div>
+        {/* Tarjetas resumen mejoradas */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 transform hover:scale-105 transition-transform">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4">
+              <div className="flex items-center justify-between text-white">
+                <FaDollarSign className="text-3xl" />
+                <div className="text-right">
+                  <p className="text-sm opacity-90">Ventas del Día</p>
+                  <p className="text-2xl font-bold">${(resumen.total || 0).toFixed(2)}</p>
                 </div>
               </div>
-            ))
-          )}
+            </div>
+            <div className="p-4 bg-blue-50">
+              <p className="text-xs text-blue-700 flex items-center gap-1">
+                <FaArrowUp />
+                <span>Total acumulado hoy</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 transform hover:scale-105 transition-transform">
+            <div className="bg-gradient-to-r from-green-600 to-green-700 p-4">
+              <div className="flex items-center justify-between text-white">
+                <FaShoppingCart className="text-3xl" />
+                <div className="text-right">
+                  <p className="text-sm opacity-90">Transacciones</p>
+                  <p className="text-2xl font-bold">{(resumen.transaccion || 0)}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 bg-green-50">
+              <p className="text-xs text-green-700 flex items-center gap-1">
+                <FaArrowUp />
+                <span>Ventas realizadas hoy</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100 transform hover:scale-105 transition-transform">
+            <div className="bg-gradient-to-r from-red-600 to-red-700 p-4">
+              <div className="flex items-center justify-between text-white">
+                <FaExclamationTriangle className="text-3xl" />
+                <div className="text-right">
+                  <p className="text-sm opacity-90">Stock Bajo</p>
+                  <p className="text-2xl font-bold">{productosBajos}</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 bg-red-50">
+              <p className="text-xs text-red-700 flex items-center gap-1">
+                <FaExclamationTriangle />
+                <span>Productos con stock crítico</span>
+              </p>
+            </div>
+          </div>
         </div>
-
-
-      </div>
-      </div>
-    );
-  }
   
-  // COMPONENTES SECUNDARIOS
-  function SummaryCard({ icon, bgColor, title, value, subtitle }: any) {
-    return (
-      <div className="dashboard-card bg-white p-6 shadow-md rounded-xl">
-        <div className="flex items-center">
-          <div className={`rounded-full ${bgColor} p-3 mr-4`}>{icon}</div>
-          <div>
-            <h3 className="text-gray-500 text-sm">{title}</h3>
-            <p className="text-2xl font-bold text-gray-800">{value}</p>
-            <p className="text-xs text-green-600 flex items-center">
-              <FaArrowUp className="mr-1" />
-              <span>{subtitle}</span>
-            </p>
+        {/* Accesos rápidos mejorados */}
+        <div className="mb-8">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+            <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <FaCashRegister className="text-lg" />
+                Acceso Rápido
+              </h3>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                {/* Ventas */}
+                {(user?.role === 'admin' || !modulosBloqueados['ventas']) && (
+                  <button
+                    className="bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white p-6 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all transform hover:scale-105"
+                    onClick={() => setSection('ventas')}
+                  >
+                    <FaCashRegister className="text-4xl mb-3" />
+                    <span className="font-semibold text-sm text-center">Nueva Venta</span>
+                  </button>
+                )}
+                
+                {/* Productos */}
+                {(user?.role === 'admin' || !modulosBloqueados['productos']) && (
+                  <button
+                    className="bg-gradient-to-br from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white p-6 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all transform hover:scale-105"
+                    onClick={() => setSection('productos')}
+                  >
+                    <FaBoxOpen className="text-4xl mb-3" />
+                    <span className="font-semibold text-sm text-center">Nuevo Producto</span>
+                  </button>
+                )}
+                
+                {/* Inventario */}
+                {(user?.role === 'admin' || !modulosBloqueados['inventario']) && (
+                  <button
+                    className="bg-gradient-to-br from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white p-6 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all transform hover:scale-105"
+                    onClick={() => setSection('inventario')}
+                  >
+                    <FaClipboardList className="text-4xl mb-3" />
+                    <span className="font-semibold text-sm text-center">Inventario</span>
+                  </button>
+                )}
+                
+                {/* Reportes */}
+                {(user?.role === 'admin' || !modulosBloqueados['reportes']) && (
+                  <button
+                    className="bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white p-6 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all transform hover:scale-105"
+                    onClick={() => setSection('reportes')}
+                  >
+                    <FaChartPie className="text-4xl mb-3" />
+                    <span className="font-semibold text-sm text-center">Reportes</span>
+                  </button>
+                )}
+                
+                {/* Baños */}
+                {(user?.role === 'admin' || !modulosBloqueados['baños']) && (
+                  <button
+                    className="bg-gradient-to-br from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white p-6 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all transform hover:scale-105"
+                    onClick={() => registrarUsoBaño()}
+                  >
+                    <FaToilet className="text-4xl mb-3" />
+                    <span className="font-semibold text-sm text-center">Registrar Baño</span>
+                  </button>
+                )}
+                
+                {/* Paquetería */}
+                {(user?.role === 'admin' || !modulosBloqueados['paqueteria']) && (
+                  <button
+                    className="bg-gradient-to-br from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white p-6 rounded-xl flex flex-col items-center justify-center shadow-lg transition-all transform hover:scale-105"
+                    onClick={() => setSection('paqueteria')}
+                  >
+                    <FaArchive className="text-4xl mb-3" />
+                    <span className="font-semibold text-sm text-center">Paquetería</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+  
+        {/* Productos más vendidos mejorado */}
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+          <div className="bg-gradient-to-r from-yellow-600 to-yellow-700 p-6">
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <FaTrophy className="text-lg" />
+              Productos Más Vendidos
+            </h3>
+          </div>
+          <div className="p-6">
+            {masVendidos.length === 0 ? (
+              <div className="text-center py-8">
+                <FaStar className="text-5xl text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">No hay ventas registradas aún</p>
+                <p className="text-gray-400 text-sm">Los productos más vendidos aparecerán aquí</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {masVendidos.map((p, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-200 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 text-white font-bold text-lg mr-4 shadow-lg">
+                      #{index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="font-bold text-gray-800 text-lg">{p.producto}</span>
+                        <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                          {p.cantidad_total} unidades
+                        </span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <FaDollarSign className="text-green-600 mr-1" />
+                        <span className="font-semibold text-green-600">
+                          ${p.total_vendido.toFixed(2)}
+                        </span>
+                        <span className="ml-2">vendido en total</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
-    );
-  }
-  
-  function QuickAccess({ icon, label, color, onClick }: any) {
-    return (
-      <button
-        className={`quick-access-btn ${color} hover:brightness-90 text-white p-4 rounded-xl flex flex-col items-center justify-center shadow-md`}
-        onClick={onClick}
-      >
-        <div className="text-3xl mb-2">{icon}</div>
-        <span className="font-medium">{label}</span>
-      </button>
     );
   }
 
