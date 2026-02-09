@@ -1,13 +1,23 @@
 # Estacionamiento Tienda
 
-**Versión Actual: 0.1.23**
+**Versión Actual: 0.1.1**
 
 Este proyecto es una aplicación desarrollada con **Tauri**, **React**, y **TypeScript** utilizando **Vite** como herramienta de construcción. La aplicación está diseñada para gestionar un sistema de estacionamiento y tienda, proporcionando funcionalidades como el manejo de inventarios, ventas, reportes, y más.
 
 ## 📋 Changelog
 
-### v0.1.23 - [Fecha]
-- Descripción de los cambios en esta versión
+### v0.1.1 - 09/02/2026
+- fix: Update pubkey for automatic updates configuration
+- a
+- fix: Add newline at end of main.yml to comply with formatting standards
+- feat: Configurar firma de actualizaciones automáticas
+- fix: Add TypeScript ignore comment for pdfFonts.vfs type recognition
+- fix: Sincronizar versiones de Tauri entre Cargo y NPM
+- fix: Configurar npm registry público para GitHub Actions
+- Merge branch 'main' of https://github.com/thenexusG98/estacionamiento-tienda into feature/implementacion-actualizaciones-automaticas
+- feat: implement automatic version synchronization and update README with changelog
+- feat: add tauri-plugin-process dependency and remove unused tauri-plugin-dialog
+- feat: implement automatic updates with Tauri updater and add related documentation
 
 <!-- El historial de versiones se actualiza automáticamente por GitHub Actions -->
 
