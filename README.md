@@ -1,18 +1,14 @@
 # Estacionamiento Tienda
 
-**Versión Actual: 0.1.3**
+**Versión Actual: 0.1.4**
 
 Este proyecto es una aplicación desarrollada con **Tauri**, **React**, y **TypeScript** utilizando **Vite** como herramienta de construcción. La aplicación está diseñada para gestionar un sistema de estacionamiento y tienda, proporcionando funcionalidades como el manejo de inventarios, ventas, reportes, y más.
 
 ## 📋 Changelog
 
-### v0.1.3 - 09/02/2026
-- refactor: remove unused import from Ventas component
-- refactor: remove unused state variables and imports in multiple components
-- Merge remote-tracking branch 'origin/feature/rediseño-frontend' into feature/implementacion-actualizaciones-automaticas
+### v0.1.4 - 09/02/2026
 - Merge branch 'feature/implementacion-actualizaciones-automaticas' of https://github.com/thenexusG98/estacionamiento-tienda into feature/implementacion-actualizaciones-automaticas
-- feat: enhance login and sidebar components with improved UI and animations
-- Enhance product registration and sales components with improved UI and functionality
+- feat: implement automatic updates functionality and update release URLs
 
 <!-- El historial de versiones se actualiza automáticamente por GitHub Actions -->
 
