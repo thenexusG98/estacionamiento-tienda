@@ -46,7 +46,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/thenexusG98/estacionamiento-tienda/releases/latest/download/latest.json"
+        "https://raw.githubusercontent.com/thenexusG98/estacionamiento-tienda/feature/implementacion-actualizaciones-automaticas/src-tauri/gen/latest.json"
       ],
       "dialog": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDg2RThDMDQwMjYxNUMzMjQKUldRa3d4VW1RTURvaHRPWGxuZnF4M2VYU1JNczc0RlNQU3FoYjVublZMZUkzQjdPVFlWb3htQVMK"

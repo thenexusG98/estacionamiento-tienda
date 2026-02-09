@@ -196,7 +196,7 @@ jobs:
           if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
             echo "El tag $NEW_TAG ya existe, no se crea uno nuevo."
           else
-            git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml README.md
+            git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml README.md src-tauri/gen/latest.json
             git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "Nada que commitear"
             git tag "$NEW_TAG"
             git push origin "$NEW_TAG"

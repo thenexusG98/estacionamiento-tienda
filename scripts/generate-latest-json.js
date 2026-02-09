@@ -10,6 +10,9 @@ const packageJsonPath = path.join(__dirname, '../package.json');
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const version = packageJson.version;
 
+// Detectar si estamos en rama de test basado en NEW_TAG del environment
+const newTag = process.env.NEW_TAG || `v${version}`;
+
 // Buscar los archivos de actualización generados por Tauri
 const targetDir = path.join(__dirname, '../src-tauri/target/release/bundle');
 const platforms = {};
@@ -36,7 +39,7 @@ const appImageSig = findFile(appImageDir, '.AppImage.tar.gz.sig');
 if (appImageFile && appImageSig) {
   platforms['linux-x86_64'] = {
     signature: getSignature(appImageSig),
-    url: `https://github.com/thenexusG98/estacionamiento-tienda/releases/download/v${version}/${path.basename(appImageFile)}`
+    url: `https://github.com/thenexusG98/estacionamiento-tienda/releases/download/${newTag}/${path.basename(appImageFile)}`
   };
 }
 
@@ -48,7 +51,7 @@ const msiSig = findFile(msiDir, '.msi.zip.sig');
 if (msiFile && msiSig) {
   platforms['windows-x86_64'] = {
     signature: getSignature(msiSig),
-    url: `https://github.com/thenexusG98/estacionamiento-tienda/releases/download/v${version}/${path.basename(msiFile)}`
+    url: `https://github.com/thenexusG98/estacionamiento-tienda/releases/download/${newTag}/${path.basename(msiFile)}`
   };
 }
 
@@ -62,7 +65,7 @@ if (nsisFile && nsisSig) {
   if (!platforms['windows-x86_64']) {
     platforms['windows-x86_64'] = {
       signature: getSignature(nsisSig),
-      url: `https://github.com/thenexusG98/estacionamiento-tienda/releases/download/v${version}/${path.basename(nsisFile)}`
+      url: `https://github.com/thenexusG98/estacionamiento-tienda/releases/download/${newTag}/${path.basename(nsisFile)}`
     };
   }
 }

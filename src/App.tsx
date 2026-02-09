@@ -15,6 +15,7 @@ import GestionModulos from './components/GestionModulos';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
+import { useUpdater } from './hooks/useUpdater';
 import { verificarModuloBloqueado } from './lib/db';
 import './App.css'
 
@@ -40,6 +41,9 @@ export default function App() {
   const [section, setSection] = useState('dashboard');
   const [modulosBloqueados, setModulosBloqueados] = useState<Record<string, boolean>>({});
   const { isAuthenticated, user, isLoading, logout } = useAuth();
+  
+  // Hook para verificar actualizaciones automáticas
+  useUpdater();
 
   // Cargar módulos bloqueados para empleados
   useEffect(() => {
