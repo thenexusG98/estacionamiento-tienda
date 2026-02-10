@@ -109,13 +109,8 @@ jobs:
           rm -f package-lock.json
         shell: bash
 
-      # Instalar jq para todas las plataformas
-      - name: Instala jq (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: sudo apt-get install -y jq
-        
+      # Instalar jq para Windows
       - name: Instala jq (Windows)
-        if: matrix.platform == 'windows-latest'
         run: choco install jq -y
         shell: pwsh
 
@@ -126,10 +121,15 @@ jobs:
           rm -f Cargo.lock
           cargo clean
         shell: bash
-      # Instalar jq para Windows
-      - name: Instala jq (Windows)
-        run: choco install jq -y
-        shell: pwshate
+
+      - name: Instala dependencias de Node.js
+        run: npm install
+        shell: bash
+
+      - name: Actualiza dependencias de Cargo
+        run: |
+          cd src-tauri
+          cargo update
         shell: bash
 
       - name: Instala Tauri CLI
@@ -137,16 +137,16 @@ jobs:
         shell: bash
 
       - name: Compila el proyecto con Tauri
-        run: npm run tauri build -- ${{ matrix.args }}
-        shell: bash
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      - name: Compila el proyecto con Tauri
         run: npm run tauri build
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+      - name: Verifica archivos
+        run: |
+          echo "=== Archivos generados ==="
+          ls -lhR src-tauri/target/release/bundle/ || true
         shell: bash
 
       # Genera latest.json para el updater
@@ -184,11 +184,8 @@ jobs:
             Versión: ${{ env.NEW_VERSION }}
             Tag: ${{ env.NEW_TAG }}
             Rama: ${{ github.ref_name }}
-            Plataforma: ${{ matrix.platform }}
           draft: false
           prerelease: ${{ env.TAG_PREFIX != '' }}
-          append_body: true
-          make_latest: false
           append_body: true
           make_latest: false
           files: |
@@ -201,4 +198,6 @@ jobs:
             src-tauri/target/release/bundle/nsis/*.nsis.zip.sig
             src-tauri/target/release/bundle/nsis/*.sig
             src-tauri/gen/latest.json
-          fail_on_unmatched_files: falseUB_TOKEN }}
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
