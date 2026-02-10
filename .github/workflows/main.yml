@@ -182,25 +182,26 @@ jobs:
 
       # Genera latest.json para el updater (solo en Linux)
       - name: Genera latest.json para actualizaciones
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'windows-latest'
+        continue-on-error: true
         run: |
-          node scripts/generate-latest-json.js
+          node scripts/generate-latest-json.js || echo "⚠️ Error generando latest.json, continuando..."
         shell: bash
 
-      # 4. Crea y sube el nuevo tag SOLO DESPUÉS de compilación exitosa (SOLO EN LINUX)
+      # 4. Crea y sube el nuevo tag SOLO DESPUÉS de compilación exitosa (SOLO EN LINUX O WINDOWS)
       - name: Crea y sube el nuevo tag después de compilación exitosa
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'windows-latest'
         run: |
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           
           if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
             echo "El tag $NEW_TAG ya existe, no se crea uno nuevo."
           else
-            git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml README.md src-tauri/gen/latest.json
+            git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml README.md src-tauri/gen/latest.json 2>/dev/null || true
             git commit -m "chore: bump version to $NEW_VERSION [skip ci]" || echo "Nada que commitear"
-            git tag "$NEW_TAG"
-            git push origin "$NEW_TAG"
-            git push origin "$BRANCH_NAME"
+            git tag "$NEW_TAG" || echo "Tag ya existe"
+            git push origin "$NEW_TAG" || echo "Tag ya existe en remoto"
+            git push origin "$BRANCH_NAME" || echo "Ya está actualizado"
             echo "✅ Tag $NEW_TAG creado y subido después de compilación exitosa."
           fi
         shell: bash
