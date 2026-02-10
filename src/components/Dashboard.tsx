@@ -1,4 +1,5 @@
 // src/components/Dashboard.tsx
+// Panel de control principal
 import { useEffect, useState } from 'react';
 import { obtenerResumenDelDia, contarProductosBajos, obtenerProductosMasVendidos,
   registrarBaño, verificarModuloBloqueado
