@@ -9,16 +9,7 @@ on:
 
 jobs:
   release:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: 'ubuntu-22.04' # Linux
-            args: ''
-          - platform: 'windows-latest' # Windows
-            args: ''
-
-    runs-on: ${{ matrix.platform }}
+    runs-on: windows-latest
 
     steps:
       - name: Clona el repositorio
@@ -100,23 +91,6 @@ jobs:
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
         shell: bash
 
-      # Resto de pasos de build y release...
-      - name: Instala dependencias de sistema para Tauri (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libjavascriptcoregtk-4.1-dev \
-            libsoup-3.0-dev \
-            build-essential \
-            curl \
-            wget \
-            libssl-dev \
-            libgtk-3-dev \
-            squashfs-tools \
-            pkg-config
-
       - name: Instala Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -152,15 +126,10 @@ jobs:
           rm -f Cargo.lock
           cargo clean
         shell: bash
-
-      - name: Instala dependencias de Node.js
-        run: npm install
-        shell: bash
-
-      - name: Actualiza dependencias de Cargo
-        run: |
-          cd src-tauri
-          cargo update
+      # Instalar jq para Windows
+      - name: Instala jq (Windows)
+        run: choco install jq -y
+        shell: pwshate
         shell: bash
 
       - name: Instala Tauri CLI
@@ -172,25 +141,23 @@ jobs:
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      - name: Compila el proyecto con Tauri
+        run: npm run tauri build
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-      - name: Verifica archivos
-        run: |
-          echo "=== Archivos generados ==="
-          ls -lhR src-tauri/target/release/bundle/ || true
         shell: bash
 
-      # Genera latest.json para el updater (solo en Linux)
+      # Genera latest.json para el updater
       - name: Genera latest.json para actualizaciones
-        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'windows-latest'
         continue-on-error: true
         run: |
           node scripts/generate-latest-json.js || echo "⚠️ Error generando latest.json, continuando..."
         shell: bash
 
-      # 4. Crea y sube el nuevo tag SOLO DESPUÉS de compilación exitosa (SOLO EN LINUX O WINDOWS)
+      # 4. Crea y sube el nuevo tag SOLO DESPUÉS de compilación exitosa
       - name: Crea y sube el nuevo tag después de compilación exitosa
-        if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'windows-latest'
         run: |
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           
@@ -217,14 +184,14 @@ jobs:
             Versión: ${{ env.NEW_VERSION }}
             Tag: ${{ env.NEW_TAG }}
             Rama: ${{ github.ref_name }}
+            Plataforma: ${{ matrix.platform }}
           draft: false
           prerelease: ${{ env.TAG_PREFIX != '' }}
+          append_body: true
+          make_latest: false
+          append_body: true
+          make_latest: false
           files: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz
-            src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig
-            src-tauri/target/release/bundle/appimage/*.sig
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/msi/*.msi.zip
             src-tauri/target/release/bundle/msi/*.msi.zip.sig
@@ -234,6 +201,4 @@ jobs:
             src-tauri/target/release/bundle/nsis/*.nsis.zip.sig
             src-tauri/target/release/bundle/nsis/*.sig
             src-tauri/gen/latest.json
-          fail_on_unmatched_files: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_unmatched_files: falseUB_TOKEN }}
