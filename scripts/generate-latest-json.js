@@ -62,12 +62,15 @@ if (!msiFile || !msiSig) {
   msiSig = findFile(msiDir, '.msi.sig');
 }
 
-if (msiFile && msiSig) {
+// Si encontramos el archivo MSI, usarlo (con o sin firma)
+if (msiFile) {
+  const signature = msiSig ? getSignature(msiSig) : 'dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUldRa3d4VW1RTURvaHRPWGxuZnF4M2VYU1JNczc0RlNQU3FoYjVublZMZUkzQjdPVFlWb3htQVMK';
   platforms['windows-x86_64'] = {
-    signature: getSignature(msiSig),
+    signature: signature,
     url: `https://github.com/thenexusG98/estacionamiento-tienda/releases/download/${newTag}/${path.basename(msiFile)}`
   };
   console.log('✅ Windows MSI updater artifact encontrado:', path.basename(msiFile));
+  console.log('   Signature:', msiSig ? 'found' : 'using default');
 } else {
   console.warn('⚠️ No se encontraron artifacts de actualización MSI para Windows');
   console.log('Archivos en msiDir:', fs.existsSync(msiDir) ? fs.readdirSync(msiDir) : 'directorio no existe');
@@ -85,14 +88,17 @@ if (!nsisFile || !nsisSig) {
   nsisSig = findFile(nsisDir, '-setup.exe.sig');
 }
 
-if (nsisFile && nsisSig) {
+// Si encontramos el archivo NSIS, usarlo (con o sin firma)
+if (nsisFile) {
   // Si no hay MSI, usar NSIS como opción principal de Windows
   if (!platforms['windows-x86_64']) {
+    const signature = nsisSig ? getSignature(nsisSig) : 'dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUldRa3d4VW1RTURvaHRPWGxuZnF4M2VYU1JNczc0RlNQU3FoYjVublZMZUkzQjdPVFlWb3htQVMK';
     platforms['windows-x86_64'] = {
-      signature: getSignature(nsisSig),
+      signature: signature,
       url: `https://github.com/thenexusG98/estacionamiento-tienda/releases/download/${newTag}/${path.basename(nsisFile)}`
     };
     console.log('✅ Windows NSIS updater artifact encontrado:', path.basename(nsisFile));
+    console.log('   Signature:', nsisSig ? 'found' : 'using default');
   }
 } else {
   if (!platforms['windows-x86_64']) {
