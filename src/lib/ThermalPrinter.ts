@@ -1,8 +1,12 @@
 /**
  * ThermalPrinter.ts
- * Driver ESC/POS para impresora POS-5890U (58mm / 80mm) vía Web Serial API (USB CDC)
- * La POS-5890U aparece en Windows como puerto COM (USB Serial) y en macOS/Linux como /dev/ttyUSB* o /dev/cu.*
+ * Driver ESC/POS para impresora POS-5890U vía puerto USB directo (USB001, USB002, etc.)
+ * En Windows estos puertos son rutas de dispositivo (\\\\.\\ USB001) que se abren con
+ * CreateFile. El frontend acumula los bytes ESC/POS en un buffer y los envía de una
+ * sola vez al backend Rust que los escribe al dispositivo.
  */
+
+import { invoke } from '@tauri-apps/api/core';
 
 // ─── Constantes ESC/POS ───────────────────────────────────────────────────────
 const ESC = 0x1b;
@@ -39,124 +43,110 @@ export const CMD = {
 } as const;
 
 // ─── Config de puerto por defecto ────────────────────────────────────────────
-export interface PrinterPortConfig {
-  baudRate:   number;         // 9600 | 38400 | 115200  (POS-5890U: 9600 o 115200)
-  dataBits:   7 | 8;          // 8
-  stopBits:   1 | 2;          // 1
-  parity:     ParityType;     // 'none'
-  bufferSize: number;         // bytes
-}
-
-export const DEFAULT_PORT_CONFIG: PrinterPortConfig = {
-  baudRate:   115200,
-  dataBits:   8,
-  stopBits:   1,
-  parity:     'none',
-  bufferSize: 4096,
-};
-
 // ─── Estado de conexión ───────────────────────────────────────────────────────
-let _port:   SerialPort | null = null;
-let _writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
+// _usbPort: nombre del puerto, p. ej. "USB001" (Windows) o "usb/lp0" (Linux)
+let _usbPort: string | null = null;
+// _buffer:  acumula todos los bytes ESC/POS de un trabajo antes de enviarlos
+let _buffer:  number[]      = [];
 
 export function isPrinterConnected(): boolean {
-  return _port !== null && _writer !== null;
+  return _usbPort !== null;
+}
+
+export function getPrinterPort(): string | null {
+  return _usbPort;
 }
 
 // ─── Conectar ─────────────────────────────────────────────────────────────────
-// Siempre solicita la selección de puerto al usuario (nunca reutiliza automáticamente)
+// Recibe el nombre del puerto tal como lo muestra Windows: USB001, USB002, etc.
+// Verifica la comunicación enviando ESC @ al dispositivo real.
 export async function connectPrinter(
-  config: Partial<PrinterPortConfig> = {}
+  portName: string
 ): Promise<{ ok: boolean; message: string }> {
-  try {
-    if (!('serial' in navigator)) {
-      return { ok: false, message: 'Web Serial API no disponible en este navegador/entorno.' };
-    }
-
-    // Cerrar conexión previa si existe
-    if (_writer) { try { _writer.releaseLock(); } catch (_) {} _writer = null; }
-    if (_port)   { try { await _port.close();   } catch (_) {} _port   = null; }
-
-    const portConfig = { ...DEFAULT_PORT_CONFIG, ...config };
-
-    // SIEMPRE mostrar el diálogo de selección de puerto (USB002, COM1, etc.)
-    _port = await navigator.serial.requestPort();
-
-    await _port.open(portConfig);
-
-    const writer = _port.writable?.getWriter();
-    if (!writer) throw new Error('No se pudo obtener el escritor del puerto serial.');
-    _writer = writer;
-
-    // Hard-reset de la impresora al conectar
-    await _hardReset();
-
-    return { ok: true, message: 'Impresora conectada correctamente.' };
-  } catch (err: any) {
-    _port   = null;
-    _writer = null;
-    const msg = err?.message ?? String(err);
-    return { ok: false, message: `Error al conectar: ${msg}` };
+  const port = portName.trim().replace(/[\\.\/]/g, '').toUpperCase();
+  if (!port) {
+    return { ok: false, message: 'Debe ingresar el nombre del puerto (ej: USB001, USB002).' };
   }
+
+  _usbPort = port;
+  _buffer  = [];
+
+  // Verificar enviando solo ESC @ (reset) — si el puerto no existe, Rust devuelve error
+  _appendBytes(CMD.INIT);
+  _appendBytes(CMD.CHARSET_PC850);
+  const result = await _flush();
+  if (!result.ok) {
+    _usbPort = null;
+    return { ok: false, message: `No se pudo abrir '${port}': ${result.message}` };
+  }
+  return { ok: true, message: `Conectada al puerto ${port} correctamente.` };
 }
 
 // ─── Desconectar ──────────────────────────────────────────────────────────────
 export async function disconnectPrinter(): Promise<void> {
-  try {
-    if (_writer) {
-      _writer.releaseLock();
-      _writer = null;
-    }
-    if (_port) {
-      await _port.close();
-      _port = null;
-    }
-  } catch (_) {
-    _port   = null;
-    _writer = null;
+  _usbPort = null;
+  _buffer  = [];
+}
+
+// ─── Buffer helpers ───────────────────────────────────────────────────────────
+
+// Agrega bytes al buffer. Los bytes se envían todos juntos al llamar _flush().
+function _appendBytes(bytes: readonly number[] | number[]): void {
+  for (const b of bytes) _buffer.push(b);
+}
+
+// Codifica texto como PC850 / Latin-1 y lo agrega al buffer.
+function _appendText(text: string): void {
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    _buffer.push(code < 256 ? code : 0x3f); // '?' para caracteres fuera de rango
   }
 }
 
-// ─── Hard reset interno ──────────────────────────────────────────────────────
-// ESC @ resetea la impresora y ubica el cabezal al inicio de la línea.
-// Se usa al conectar y al inicio de cada ticket para evitar imprimir a mitad de hoja.
-async function _hardReset(): Promise<void> {
-  await _writeBytes(CMD.INIT);          // ESC @  — inicializa impresora
-  await _writeBytes(CMD.ALIGN_LEFT);    // alineación izquierda
-  await _writeBytes(CMD.NORMAL_SIZE);   // tamaño normal
-  await _writeBytes(CMD.BOLD_OFF);      // sin negrita
-  await _writeBytes(CMD.CHARSET_PC850); // charset Latin/PC850
-  // Pequeña pausa para que la impresora procese el reset antes de recibir datos
-  await new Promise<void>((r) => setTimeout(r, 80));
+// Envía todo el buffer al dispositivo USB via Rust y limpia el buffer.
+async function _flush(): Promise<{ ok: boolean; message: string }> {
+  if (!_usbPort) return { ok: false, message: 'Sin puerto configurado.' };
+  if (_buffer.length === 0) return { ok: true, message: 'OK' };
+  const bytes = [..._buffer];
+  _buffer = [];
+  try {
+    await invoke<void>('print_raw_usb', { port: _usbPort, data: bytes });
+    return { ok: true, message: 'OK' };
+  } catch (err: any) {
+    return { ok: false, message: err?.message ?? String(err) };
+  }
 }
 
-// ─── Escritura de bytes raw ───────────────────────────────────────────────────
-async function _writeBytes(bytes: readonly number[] | number[]): Promise<void> {
-  if (!_writer) throw new Error('Impresora no conectada.');
-  await _writer.write(new Uint8Array(bytes));
-}
-
-async function _writeText(text: string): Promise<void> {
-  const encoded = new TextEncoder().encode(text);
-  if (!_writer) throw new Error('Impresora no conectada.');
-  await _writer.write(encoded);
+// ─── Hard reset interno ───────────────────────────────────────────────────────
+// Prepara el buffer con ESC @ + valores por defecto al inicio de cada ticket.
+// Garantiza que la impresora empiece desde el inicio de la hoja.
+function _hardReset(): void {
+  _buffer = [];              // descartar cualquier byte pendiente
+  _appendBytes(CMD.INIT);          // ESC @  — inicializa y mueve cabezal al inicio
+  _appendBytes(CMD.ALIGN_LEFT);    // alineación izquierda
+  _appendBytes(CMD.NORMAL_SIZE);   // tamaño normal
+  _appendBytes(CMD.BOLD_OFF);      // sin negrita
+  _appendBytes(CMD.CHARSET_PC850); // charset Latin/PC850
 }
 
 // ─── API de alto nivel ────────────────────────────────────────────────────────
 
 export async function printerInit(): Promise<void> {
-  await _hardReset();
+  _hardReset();
 }
 
-export async function printerFeed(lines = 1): Promise<void> {
+export function printerFeed(lines = 1): void {
   for (let i = 0; i < lines; i++) {
-    await _writeBytes(CMD.LINE_FEED);
+    _appendBytes(CMD.LINE_FEED);
   }
 }
 
+// printerCut es el único que hace flush — todo lo anterior queda en buffer
 export async function printerCut(partial = true): Promise<void> {
-  await printerFeed(3);
-  await _writeBytes(partial ? CMD.CUT_PARTIAL : CMD.CUT_FULL);
+  printerFeed(3);
+  _appendBytes(partial ? CMD.CUT_PARTIAL : CMD.CUT_FULL);
+  const r = await _flush();
+  if (!r.ok) throw new Error(r.message);
 }
 
 export async function printerLine(
@@ -165,30 +155,26 @@ export async function printerLine(
 ): Promise<void> {
   const { bold = false, align = 'left', size = 'normal' } = opts;
 
-  // Alineación
-  if (align === 'center') await _writeBytes(CMD.ALIGN_CENTER);
-  else if (align === 'right') await _writeBytes(CMD.ALIGN_RIGHT);
-  else await _writeBytes(CMD.ALIGN_LEFT);
+  if (align === 'center') _appendBytes(CMD.ALIGN_CENTER);
+  else if (align === 'right') _appendBytes(CMD.ALIGN_RIGHT);
+  else _appendBytes(CMD.ALIGN_LEFT);
 
-  // Tamaño
-  if (size === 'double') await _writeBytes(CMD.DOUBLE_BOTH);
-  else await _writeBytes(CMD.NORMAL_SIZE);
+  if (size === 'double') _appendBytes(CMD.DOUBLE_BOTH);
+  else _appendBytes(CMD.NORMAL_SIZE);
 
-  // Negrita
-  if (bold) await _writeBytes(CMD.BOLD_ON);
+  if (bold) _appendBytes(CMD.BOLD_ON);
 
-  await _writeText(text + '\n');
+  _appendText(text + '\n');
 
-  // Restaurar
-  if (bold) await _writeBytes(CMD.BOLD_OFF);
-  if (size === 'double') await _writeBytes(CMD.NORMAL_SIZE);
-  await _writeBytes(CMD.ALIGN_LEFT);
+  if (bold) _appendBytes(CMD.BOLD_OFF);
+  if (size === 'double') _appendBytes(CMD.NORMAL_SIZE);
+  _appendBytes(CMD.ALIGN_LEFT);
 }
 
 export async function printerSeparator(char = '-', cols = 32): Promise<void> {
-  await _writeBytes(CMD.ALIGN_LEFT);
-  await _writeBytes(CMD.NORMAL_SIZE);
-  await _writeText(char.repeat(cols) + '\n');
+  _appendBytes(CMD.ALIGN_LEFT);
+  _appendBytes(CMD.NORMAL_SIZE);
+  _appendText(char.repeat(cols) + '\n');
 }
 
 /**
@@ -197,11 +183,11 @@ export async function printerSeparator(char = '-', cols = 32): Promise<void> {
  * La POS-5890U a 58mm tiene ~32 cols en fuente normal.
  */
 export async function printerRow(left: string, right: string, cols = 32): Promise<void> {
-  await _writeBytes(CMD.ALIGN_LEFT);
-  await _writeBytes(CMD.NORMAL_SIZE);
+  _appendBytes(CMD.ALIGN_LEFT);
+  _appendBytes(CMD.NORMAL_SIZE);
   const pad = cols - left.length - right.length;
   const spaces = pad > 0 ? ' '.repeat(pad) : ' ';
-  await _writeText(left + spaces + right + '\n');
+  _appendText(left + spaces + right + '\n');
 }
 
 // ─── Test de comunicación ─────────────────────────────────────────────────────
@@ -210,7 +196,7 @@ export async function printerTestPage(): Promise<{ ok: boolean; message: string 
     return { ok: false, message: 'La impresora no está conectada.' };
   }
   try {
-    await printerInit();
+    _hardReset();
     await printerLine('=== PRUEBA DE IMPRESION ===', { align: 'center', bold: true });
     await printerSeparator('-', 32);
     await printerLine('  POS-5890U  OK', { align: 'center' });
@@ -223,7 +209,7 @@ export async function printerTestPage(): Promise<{ ok: boolean; message: string 
     await printerSeparator('=', 32);
     await printerLine('Impresion exitosa!', { align: 'center', bold: true });
     await printerSeparator('-', 32);
-    await printerCut(true);
+    await printerCut(true); // envia todo el buffer de golpe
     return { ok: true, message: 'Página de prueba enviada correctamente.' };
   } catch (err: any) {
     return { ok: false, message: `Error durante la prueba: ${err?.message ?? err}` };
@@ -239,7 +225,7 @@ export async function imprimirTicketEstacionamiento(
     return { ok: false, message: 'La impresora no está conectada.' };
   }
   try {
-    await _hardReset(); // asegura inicio de hoja limpio
+    _hardReset(); // ESC @ al inicio del buffer: cabezal siempre al principio
     await printerLine('ESTACIONAMIENTO', { align: 'center', bold: true });
     await printerSeparator('-', 32);
     await printerRow('ID:', String(id));
@@ -248,7 +234,7 @@ export async function imprimirTicketEstacionamiento(
     await printerRow('Fecha:', new Date().toLocaleDateString('es-MX'));
     await printerSeparator('-', 32);
     await printerLine('Gracias por su visita', { align: 'center' });
-    await printerCut(true);
+    await printerCut(true); // flush — envía todo en un solo WriteFile
     return { ok: true, message: 'Ticket de estacionamiento impreso.' };
   } catch (err: any) {
     return { ok: false, message: `Error al imprimir: ${err?.message ?? err}` };
@@ -264,7 +250,7 @@ export async function imprimirTicketPaqueteria(
   }
 
   const imprimirCopia = async (titulo: string) => {
-    await _hardReset(); // asegura inicio de hoja limpio
+    _hardReset(); // ESC @ al inicio del buffer de cada copia
     await printerLine('PAQUETERIA', { align: 'center', bold: true });
     await printerLine(titulo, { align: 'center' });
     await printerSeparator('-', 32);
@@ -277,11 +263,12 @@ export async function imprimirTicketPaqueteria(
 
   try {
     await imprimirCopia('- Ticket Cliente -');
-    await printerCut(true);
+    await printerCut(true); // flush copia 1
     await imprimirCopia('- Ticket Interno -');
-    await printerCut(true);
+    await printerCut(true); // flush copia 2
     return { ok: true, message: 'Tickets de paquetería impresos.' };
   } catch (err: any) {
     return { ok: false, message: `Error al imprimir: ${err?.message ?? err}` };
   }
 }
+

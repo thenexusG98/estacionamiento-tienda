@@ -1,18 +1,18 @@
 /**
  * ConfigImpresora.tsx
- * Panel de configuración y prueba de comunicación para la impresora POS-5890U (USB/Serial)
+ * Panel de configuración y prueba de comunicación para la impresora POS-5890U (USB raw)
+ * La impresora se comunica via puerto USB de Windows: USB001, USB002, etc.
  */
 import { useState, useCallback } from 'react';
 import {
   connectPrinter,
   disconnectPrinter,
   isPrinterConnected,
+  getPrinterPort,
   printerTestPage,
   printerLine,
   printerSeparator,
   printerCut,
-  DEFAULT_PORT_CONFIG,
-  type PrinterPortConfig,
 } from '../lib/ThermalPrinter';
 import {
   FaPrint,
@@ -21,12 +21,12 @@ import {
   FaCheckCircle,
   FaTimesCircle,
   FaSync,
-  FaSlidersH,
+  FaUsb,
 } from 'react-icons/fa';
 
 type LogEntry = { type: 'ok' | 'error' | 'info'; text: string; ts: string };
 
-const BAUD_RATES = [9600, 19200, 38400, 57600, 115200] as const;
+const COMMON_PORTS = ['USB001', 'USB002', 'USB003', 'LPT1'];
 
 function logTs(): string {
   return new Date().toLocaleTimeString('es-MX');
@@ -37,7 +37,7 @@ export default function ConfigImpresora() {
   const [loading, setLoading]       = useState(false);
   const [logs, setLogs]             = useState<LogEntry[]>([]);
   const [customText, setCustomText] = useState('');
-  const [config, setConfig]         = useState<PrinterPortConfig>({ ...DEFAULT_PORT_CONFIG });
+  const [portName, setPortName]     = useState(getPrinterPort() ?? 'USB001');
 
   const addLog = useCallback((type: LogEntry['type'], text: string) => {
     setLogs((prev) => [{ type, text, ts: logTs() }, ...prev].slice(0, 100));
@@ -46,8 +46,8 @@ export default function ConfigImpresora() {
   // ── Conectar ──────────────────────────────────────────────────────────────
   const handleConnect = async () => {
     setLoading(true);
-    addLog('info', 'Conectando con la impresora…');
-    const result = await connectPrinter(config);
+    addLog('info', `Intentando conectar al puerto ${portName}…`);
+    const result = await connectPrinter(portName);
     if (result.ok) {
       setConnected(true);
       addLog('ok', result.message);
@@ -128,113 +128,56 @@ export default function ConfigImpresora() {
             Configuración de Impresora
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            POS-5890U — Conexión USB / Serial (ESC/POS)
+            POS-5890U — Puerto USB directo (USB001, USB002…)
           </p>
         </div>
         <StatusBadge />
       </div>
 
-      {/* ── Configuración de puerto ──────────────────────────────────────── */}
+      {/* ── Selección de puerto USB ──────────────────────────────────────── */}
       <section className="bg-white rounded-xl shadow p-5 space-y-4">
         <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-          <FaSlidersH /> Parámetros del puerto serial
+          <FaUsb /> Puerto USB de la impresora
         </h3>
         <p className="text-xs text-gray-500">
-          La POS-5890U suele operar a <strong>115200</strong> o <strong>9600</strong> bps.
-          Si un baud rate no funciona, prueba el otro.
+          Ingresa el nombre exacto del puerto como aparece en <strong>Propiedades de la impresora → Puerto</strong>.
+          Normalmente es <strong>USB001</strong> o <strong>USB002</strong>.
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {/* Baud Rate */}
-          <label className="flex flex-col text-sm text-gray-600">
-            Velocidad (baud)
-            <select
-              className="mt-1 border rounded px-2 py-1 text-gray-800"
-              value={config.baudRate}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, baudRate: Number(e.target.value) }))
-              }
-            >
-              {BAUD_RATES.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          </label>
 
-          {/* Data Bits */}
-          <label className="flex flex-col text-sm text-gray-600">
-            Bits de datos
-            <select
-              className="mt-1 border rounded px-2 py-1 text-gray-800"
-              value={config.dataBits}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, dataBits: Number(e.target.value) as 7 | 8 }))
-              }
-            >
-              {[7, 8].map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Stop Bits */}
-          <label className="flex flex-col text-sm text-gray-600">
-            Bits de parada
-            <select
-              className="mt-1 border rounded px-2 py-1 text-gray-800"
-              value={config.stopBits}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, stopBits: Number(e.target.value) as 1 | 2 }))
-              }
-            >
-              {[1, 2].map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Paridad */}
-          <label className="flex flex-col text-sm text-gray-600">
-            Paridad
-            <select
-              className="mt-1 border rounded px-2 py-1 text-gray-800"
-              value={config.parity}
-              onChange={(e) =>
-                setConfig((c) => ({
-                  ...c,
-                  parity: e.target.value as ParityType,
-                }))
-              }
-            >
-              {['none', 'even', 'odd'].map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {/* Buffer size */}
-          <label className="flex flex-col text-sm text-gray-600">
-            Buffer (bytes)
+        <div className="flex flex-wrap gap-3 items-end">
+          <label className="flex flex-col text-sm text-gray-600 flex-1 min-w-[160px]">
+            Nombre del puerto
             <input
-              type="number"
-              min={512}
-              max={65536}
-              step={512}
-              className="mt-1 border rounded px-2 py-1 text-gray-800"
-              value={config.bufferSize}
-              onChange={(e) =>
-                setConfig((c) => ({ ...c, bufferSize: Number(e.target.value) }))
-              }
+              type="text"
+              value={portName}
+              onChange={(e) => setPortName(e.target.value.toUpperCase())}
+              placeholder="ej: USB001"
+              className="mt-1 border rounded px-3 py-2 text-gray-800 font-mono uppercase"
+              disabled={connected}
             />
           </label>
+
+          <div className="flex gap-2 flex-wrap">
+            {COMMON_PORTS.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPortName(p)}
+                disabled={connected}
+                className={`px-3 py-1 rounded text-xs border font-mono ${
+                  portName === p
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
+                } disabled:opacity-40`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
         </div>
+
+        <p className="text-xs text-gray-400">
+          Para verificarlo: Panel de control → Dispositivos e impresoras → clic derecho en POS-5890U → Propiedades de la impresora → pestaña Puertos.
+        </p>
       </section>
 
       {/* ── Acciones de conexión ─────────────────────────────────────────── */}
@@ -242,12 +185,12 @@ export default function ConfigImpresora() {
         <h3 className="font-semibold text-gray-700 mb-4">Control de conexión</h3>
         <div className="flex flex-wrap gap-3">
           <button
-            disabled={loading || connected}
+            disabled={loading || connected || !portName.trim()}
             onClick={handleConnect}
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FaPlug />
-            {loading && !connected ? 'Conectando…' : 'Conectar'}
+            {loading && !connected ? 'Conectando…' : `Conectar a ${portName || '…'}`}
           </button>
 
           <button
@@ -260,8 +203,8 @@ export default function ConfigImpresora() {
           </button>
         </div>
         <p className="text-xs text-gray-400 mt-3">
-          Al hacer clic en "Conectar" el navegador/Tauri solicitará permiso para
-          acceder al puerto serial USB. Selecciona el puerto de la POS-5890U.
+          Al conectar se envía un comando ESC @ al puerto indicado para verificar
+          que la impresora responde. Si el puerto es incorrecto aparecerá un error en el registro.
         </p>
       </section>
 
@@ -295,8 +238,7 @@ export default function ConfigImpresora() {
             Ping ESC @
           </button>
           <span className="text-xs text-gray-500">
-            Envía el comando de inicialización ESC @ y un "PING OK" para
-            verificar que la comunicación funciona.
+            Envía un reset ESC @ + "PING OK" para verificar que la comunicación funciona.
           </span>
         </div>
 
@@ -366,11 +308,11 @@ export default function ConfigImpresora() {
         <p className="font-semibold">Información técnica — POS-5890U</p>
         <ul className="list-disc list-inside space-y-0.5 text-xs text-blue-700">
           <li>Protocolo: ESC/POS (Epson compatible)</li>
-          <li>Interfaz física: USB CDC-ACM (aparece como COM en Windows, /dev/ttyUSB* en Linux)</li>
+          <li>Interfaz: USB Raw — los bytes se escriben directamente al dispositivo <code>\\\\.\\USB001</code></li>
           <li>Ancho de papel: 58 mm (~32 caracteres fuente normal)</li>
-          <li>Velocidad recomendada: 115200 bps (o 9600 bps en modo legado)</li>
-          <li>Codificación: PC850 / Latin-1</li>
-          <li>Corte automático: parcial (comanda GS V 1)</li>
+          <li>Sin diálogos de impresión: los datos van directo a la impresora</li>
+          <li>Todo el ticket se envía en un solo bloque al cortar el papel</li>
+          <li>ESC @ al inicio de cada trabajo garantiza posición al primer carácter</li>
         </ul>
       </section>
     </div>
