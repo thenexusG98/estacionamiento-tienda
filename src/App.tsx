@@ -12,6 +12,7 @@ import Login from './components/Login';
 import Usuarios from './components/Usuarios';
 import BitacoraLogs from './components/BitacoraLogs';
 import GestionModulos from './components/GestionModulos';
+import ConfigImpresora from './components/ConfigImpresora';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from './hooks/useAuth';
@@ -104,6 +105,7 @@ export default function App() {
             {section === 'usuarios' && user?.role === 'admin' && <Usuarios />}
             {section === 'gestion-modulos' && user?.role === 'admin' && <GestionModulos />}
             {section === 'bitacora' && user?.role === 'admin' && <BitacoraLogs />}
+            {section === 'config-impresora' && user?.role === 'admin' && <ConfigImpresora />}
           </>
         )}
       </div>

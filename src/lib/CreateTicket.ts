@@ -3,6 +3,11 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 import { generarCodigoBarrasBase64 } from './Functions';
 import type { Content } from 'pdfmake/interfaces';
+import {
+  isPrinterConnected,
+  imprimirTicketEstacionamiento as escPosEstacionamiento,
+  imprimirTicketPaqueteria as escPosPaqueteria,
+} from './ThermalPrinter';
 
 pdfMake.vfs = pdfFonts.vfs;
 pdfMake.fonts = {
@@ -53,6 +58,12 @@ interface CreatePdfProps {
     output: OutputType = 'print'
   ) => {
     const { id, placasFormatted } = props;
+
+    // ── ESC/POS directo (impresora térmica USB conectada) ──────────────────
+    if (output === 'print' && isPrinterConnected()) {
+      return escPosEstacionamiento(id, placasFormatted);
+    }
+
     const barcodeBase64 = await generarCodigoBarrasBase64(id.toString());
     try {
     
@@ -229,6 +240,12 @@ interface CreatePdfProps {
   output: OutputType = 'print'
 ): Promise<{ success: boolean; content: string | null; message: string }> => {
   const { id } = props;
+
+  // ── ESC/POS directo (impresora térmica USB conectada) ──────────────────
+  if (output === 'print' && isPrinterConnected()) {
+    const r = await escPosPaqueteria(id);
+    return { success: r.ok, content: null, message: r.message };
+  }
   const barcodeBase64 = await generarCodigoBarrasBase64(id.toString());
 
   const ticketBase = (titulo: string): Content[] => [

@@ -14,6 +14,7 @@ import {
   FaUsers,
   FaFileAlt,
   FaShieldAlt,
+  FaPrint,
 } from 'react-icons/fa';
 import { User } from '../hooks/useAuth';
 import { verificarModuloBloqueado } from '../lib/db';
@@ -79,7 +80,8 @@ export default function Sidebar({ setSection, user, onLogout }: SidebarProps) {
     ...(user?.role === 'admin' ? [
       { icon: <FaUsers />, label: 'Usuarios', key: 'usuarios' },
       { icon: <FaShieldAlt />, label: 'Gestión Módulos', key: 'gestion-modulos' },
-      { icon: <FaFileAlt />, label: 'Bitácora Logs', key: 'bitacora' }
+      { icon: <FaFileAlt />, label: 'Bitácora Logs', key: 'bitacora' },
+      { icon: <FaPrint />, label: 'Impresora', key: 'config-impresora' },
     ] : []),
   ];
 
