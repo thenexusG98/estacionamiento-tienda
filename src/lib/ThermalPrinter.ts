@@ -64,6 +64,7 @@ export function isPrinterConnected(): boolean {
 }
 
 // ─── Conectar ─────────────────────────────────────────────────────────────────
+// Siempre solicita la selección de puerto al usuario (nunca reutiliza automáticamente)
 export async function connectPrinter(
   config: Partial<PrinterPortConfig> = {}
 ): Promise<{ ok: boolean; message: string }> {
@@ -72,13 +73,14 @@ export async function connectPrinter(
       return { ok: false, message: 'Web Serial API no disponible en este navegador/entorno.' };
     }
 
+    // Cerrar conexión previa si existe
+    if (_writer) { try { _writer.releaseLock(); } catch (_) {} _writer = null; }
+    if (_port)   { try { await _port.close();   } catch (_) {} _port   = null; }
+
     const portConfig = { ...DEFAULT_PORT_CONFIG, ...config };
 
-    // Intentar reusar puerto ya autorizado
-    const ports = await navigator.serial.getPorts();
-    // Filtrar por vendor/product si se conocen (POS-5890U no tiene VID/PID estándar único,
-    // pero podemos intentar con el primero disponible)
-    _port = ports.length > 0 ? ports[0] : await navigator.serial.requestPort();
+    // SIEMPRE mostrar el diálogo de selección de puerto (USB002, COM1, etc.)
+    _port = await navigator.serial.requestPort();
 
     await _port.open(portConfig);
 
@@ -86,9 +88,8 @@ export async function connectPrinter(
     if (!writer) throw new Error('No se pudo obtener el escritor del puerto serial.');
     _writer = writer;
 
-    // Enviar INIT para resetear impresora
-    await _writeBytes(CMD.INIT);
-    await _writeBytes(CMD.CHARSET_PC850);
+    // Hard-reset de la impresora al conectar
+    await _hardReset();
 
     return { ok: true, message: 'Impresora conectada correctamente.' };
   } catch (err: any) {
@@ -116,6 +117,19 @@ export async function disconnectPrinter(): Promise<void> {
   }
 }
 
+// ─── Hard reset interno ──────────────────────────────────────────────────────
+// ESC @ resetea la impresora y ubica el cabezal al inicio de la línea.
+// Se usa al conectar y al inicio de cada ticket para evitar imprimir a mitad de hoja.
+async function _hardReset(): Promise<void> {
+  await _writeBytes(CMD.INIT);          // ESC @  — inicializa impresora
+  await _writeBytes(CMD.ALIGN_LEFT);    // alineación izquierda
+  await _writeBytes(CMD.NORMAL_SIZE);   // tamaño normal
+  await _writeBytes(CMD.BOLD_OFF);      // sin negrita
+  await _writeBytes(CMD.CHARSET_PC850); // charset Latin/PC850
+  // Pequeña pausa para que la impresora procese el reset antes de recibir datos
+  await new Promise<void>((r) => setTimeout(r, 80));
+}
+
 // ─── Escritura de bytes raw ───────────────────────────────────────────────────
 async function _writeBytes(bytes: readonly number[] | number[]): Promise<void> {
   if (!_writer) throw new Error('Impresora no conectada.');
@@ -131,7 +145,7 @@ async function _writeText(text: string): Promise<void> {
 // ─── API de alto nivel ────────────────────────────────────────────────────────
 
 export async function printerInit(): Promise<void> {
-  await _writeBytes(CMD.INIT);
+  await _hardReset();
 }
 
 export async function printerFeed(lines = 1): Promise<void> {
@@ -225,7 +239,7 @@ export async function imprimirTicketEstacionamiento(
     return { ok: false, message: 'La impresora no está conectada.' };
   }
   try {
-    await printerInit();
+    await _hardReset(); // asegura inicio de hoja limpio
     await printerLine('ESTACIONAMIENTO', { align: 'center', bold: true });
     await printerSeparator('-', 32);
     await printerRow('ID:', String(id));
@@ -250,7 +264,7 @@ export async function imprimirTicketPaqueteria(
   }
 
   const imprimirCopia = async (titulo: string) => {
-    await printerInit();
+    await _hardReset(); // asegura inicio de hoja limpio
     await printerLine('PAQUETERIA', { align: 'center', bold: true });
     await printerLine(titulo, { align: 'center' });
     await printerSeparator('-', 32);
