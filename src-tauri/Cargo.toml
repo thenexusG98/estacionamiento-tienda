@@ -34,10 +34,6 @@ tauri-plugin-dialog = "2"
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 
-# WinAPI para impresión USB raw (OpenPrinter / WritePrinter)
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["winspool", "minwindef", "winnt"] }
-
 # Optimizaciones para compilación más rápida en desarrollo
 [profile.dev]
 opt-level = 1          # Optimización ligera para builds más rápidos
