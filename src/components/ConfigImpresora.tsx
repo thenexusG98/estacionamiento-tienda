@@ -26,7 +26,7 @@ import {
 
 type LogEntry = { type: 'ok' | 'error' | 'info'; text: string; ts: string };
 
-const COMMON_PORTS = ['USB001', 'USB002', 'USB003', 'LPT1'];
+const COMMON_PORTS = ['POS-5890U', 'Generic / Text Only', 'POS Printer', 'Thermal Printer'];
 
 function logTs(): string {
   return new Date().toLocaleTimeString('es-MX');
@@ -134,25 +134,32 @@ export default function ConfigImpresora() {
         <StatusBadge />
       </div>
 
-      {/* ── Selección de puerto USB ──────────────────────────────────────── */}
+      {/* ── Nombre de la impresora ───────────────────────────────────────── */}
       <section className="bg-white rounded-xl shadow p-5 space-y-4">
         <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-          <FaUsb /> Puerto USB de la impresora
+          <FaUsb /> Nombre de la impresora (Windows)
         </h3>
-        <p className="text-xs text-gray-500">
-          Ingresa el nombre exacto del puerto como aparece en <strong>Propiedades de la impresora → Puerto</strong>.
-          Normalmente es <strong>USB001</strong> o <strong>USB002</strong>.
-        </p>
+
+        {/* Instrucción paso a paso */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800 space-y-1">
+          <p className="font-semibold">¿Cómo encontrar el nombre?</p>
+          <ol className="list-decimal list-inside space-y-0.5">
+            <li>Abre <strong>Panel de control → Dispositivos e impresoras</strong></li>
+            <li>Busca tu impresora POS (puede llamarse <em>"POS-5890U"</em>, <em>"Generic / Text Only"</em>, <em>"POS Printer"</em>, etc.)</li>
+            <li>Copia ese nombre <strong>exactamente</strong> como aparece (respeta mayúsculas y espacios)</li>
+          </ol>
+          <p className="mt-1 text-yellow-700">⚠ No uses el nombre del puerto (USB001/USB002). Usa el <strong>nombre de la impresora</strong>.</p>
+        </div>
 
         <div className="flex flex-wrap gap-3 items-end">
-          <label className="flex flex-col text-sm text-gray-600 flex-1 min-w-[160px]">
-            Nombre del puerto
+          <label className="flex flex-col text-sm text-gray-600 flex-1 min-w-[200px]">
+            Nombre de la impresora
             <input
               type="text"
               value={portName}
-              onChange={(e) => setPortName(e.target.value.toUpperCase())}
-              placeholder="ej: USB001"
-              className="mt-1 border rounded px-3 py-2 text-gray-800 font-mono uppercase"
+              onChange={(e) => setPortName(e.target.value)}
+              placeholder="ej: POS-5890U"
+              className="mt-1 border rounded px-3 py-2 text-gray-800"
               disabled={connected}
             />
           </label>
@@ -163,7 +170,7 @@ export default function ConfigImpresora() {
                 key={p}
                 onClick={() => setPortName(p)}
                 disabled={connected}
-                className={`px-3 py-1 rounded text-xs border font-mono ${
+                className={`px-3 py-1 rounded text-xs border ${
                   portName === p
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
@@ -174,10 +181,6 @@ export default function ConfigImpresora() {
             ))}
           </div>
         </div>
-
-        <p className="text-xs text-gray-400">
-          Para verificarlo: Panel de control → Dispositivos e impresoras → clic derecho en POS-5890U → Propiedades de la impresora → pestaña Puertos.
-        </p>
       </section>
 
       {/* ── Acciones de conexión ─────────────────────────────────────────── */}
@@ -308,11 +311,11 @@ export default function ConfigImpresora() {
         <p className="font-semibold">Información técnica — POS-5890U</p>
         <ul className="list-disc list-inside space-y-0.5 text-xs text-blue-700">
           <li>Protocolo: ESC/POS (Epson compatible)</li>
-          <li>Interfaz: USB Raw — los bytes se escriben directamente al dispositivo <code>\\\\.\\USB001</code></li>
+          <li>Método: Windows Print Spooler API (OpenPrinter / WritePrinter con tipo RAW)</li>
+          <li>Requiere: <strong>nombre de la impresora</strong> tal como aparece en "Dispositivos e impresoras"</li>
           <li>Ancho de papel: 58 mm (~32 caracteres fuente normal)</li>
-          <li>Sin diálogos de impresión: los datos van directo a la impresora</li>
-          <li>Todo el ticket se envía en un solo bloque al cortar el papel</li>
-          <li>ESC @ al inicio de cada trabajo garantiza posición al primer carácter</li>
+          <li>Sin diálogos de impresión: los bytes ESC/POS van directo al dispositivo</li>
+          <li>ESC @ al inicio de cada trabajo coloca el cabezal al inicio del papel</li>
         </ul>
       </section>
     </div>

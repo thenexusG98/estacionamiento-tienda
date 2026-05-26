@@ -1,77 +1,123 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
-/// Envía bytes ESC/POS al puerto USB de la impresora.
-///
-/// En Windows los puertos USB001/USB002 son administrados por el USB Print Monitor
-/// y NO pueden abrirse con CreateFile (\\.\USB001 no existe como device path).
-/// El método correcto y estándar en Windows es:
-///   1. Escribir los bytes a un archivo temporal .bin
-///   2. Ejecutar: cmd /c copy /b "temp.bin" USB002:
-/// Esto envía los bytes crudos ESC/POS directamente al monitor sin el spooler de renderizado.
-///
-/// En Linux/macOS se escribe directo al device file (/dev/usb/lp0).
+/// Envía bytes ESC/POS a la impresora usando la API de spooler de Windows.
+/// `printer_name` es el nombre de la impresora TAL COMO aparece en
+/// "Dispositivos e impresoras" (ej: "POS-5890U", "Generic / Text Only").
+/// Usa OpenPrinter + WritePrinter con tipo de datos RAW, sin diálogos.
 #[tauri::command]
-fn print_raw_usb(port: String, data: Vec<u8>) -> Result<(), String> {
+fn print_raw_usb(printer_name: String, data: Vec<u8>) -> Result<(), String> {
     #[cfg(target_os = "windows")]
-    {
-        use std::io::Write;
-
-        // Archivo temporal en %TEMP%
-        let temp_path = std::env::temp_dir().join("ticket_pos_tmp.bin");
-
-        // Escribir bytes ESC/POS al archivo
-        let mut tmp = std::fs::File::create(&temp_path)
-            .map_err(|e| format!("No se pudo crear archivo temporal: {}", e))?;
-        tmp.write_all(&data)
-            .map_err(|e| format!("Error al escribir datos ESC/POS: {}", e))?;
-        drop(tmp);
-
-        // Asegurar que el nombre del puerto termine en ':' (ej: USB002:)
-        let port_arg = if port.trim().ends_with(':') {
-            port.trim().to_uppercase()
-        } else {
-            format!("{}:", port.trim().to_uppercase())
-        };
-
-        // copy /b envia bytes raw al puerto, sin conversion ni spooler
-        let output = std::process::Command::new("cmd")
-            .args(["/C", "copy", "/b",
-                   temp_path.to_str().unwrap_or("ticket_pos_tmp.bin"),
-                   &port_arg])
-            .output()
-            .map_err(|e| format!("Error al ejecutar copy: {}", e))?;
-
-        // Borrar archivo temporal (ignorar errores)
-        let _ = std::fs::remove_file(&temp_path);
-
-        if !output.status.success() {
-            let out = String::from_utf8_lossy(&output.stdout);
-            let err = String::from_utf8_lossy(&output.stderr);
-            return Err(format!(
-                "Error al enviar al puerto {}: {} {}",
-                port_arg,
-                out.trim(),
-                err.trim()
-            ));
-        }
-
-        Ok(())
-    }
+    return print_via_spooler(&printer_name, &data);
 
     #[cfg(not(target_os = "windows"))]
     {
+        // En Linux/macOS: escribir al device file (/dev/usb/lp0, etc.)
         use std::io::Write;
-        // En Linux: /dev/usb/lp0 | En macOS: /dev/cu.*
         let mut file = std::fs::OpenOptions::new()
             .write(true)
-            .open(&port)
-            .map_err(|e| format!("No se pudo abrir '{}': {}", port, e))?;
+            .open(&printer_name)
+            .map_err(|e| format!("No se pudo abrir '{}': {}", printer_name, e))?;
         file.write_all(&data)
-            .map_err(|e| format!("Error al escribir en '{}': {}", port, e))?;
+            .map_err(|e| format!("Error al escribir: {}", e))?;
         Ok(())
     }
 }
 
+/// Implementación Windows: OpenPrinter -> StartDocPrinter(RAW) -> WritePrinter -> ClosePrinter
+#[cfg(target_os = "windows")]
+fn print_via_spooler(printer_name: &str, data: &[u8]) -> Result<(), String> {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use std::ptr;
+    use winapi::shared::minwindef::DWORD;
+    use winapi::um::winspool::{
+        ClosePrinter, DOC_INFO_1W, EndDocPrinter, EndPagePrinter,
+        OpenPrinterW, StartDocPrinterW, StartPagePrinter, WritePrinter,
+    };
+
+    // Convertir nombre de impresora a UTF-16
+    let w_name: Vec<u16> = OsStr::new(printer_name)
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    let w_doc: Vec<u16> = OsStr::new("Ticket ESC/POS")
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    let w_raw: Vec<u16> = OsStr::new("RAW")
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+
+    unsafe {
+        // 1) Abrir impresora por nombre
+        let mut h_printer = ptr::null_mut();
+        if OpenPrinterW(w_name.as_ptr() as *mut _, &mut h_printer, ptr::null_mut()) == 0 {
+            let err = std::io::Error::last_os_error();
+            return Err(format!(
+                "No se pudo abrir la impresora '{}'. Verifica que el nombre coincida exactamente con el de 'Dispositivos e impresoras'. Error: {}",
+                printer_name, err
+            ));
+        }
+
+        // 2) Iniciar documento RAW
+        let mut doc_info = DOC_INFO_1W {
+            pDocName: w_doc.as_ptr() as *mut _,
+            pOutputFile: ptr::null_mut(),
+            pDatatype: w_raw.as_ptr() as *mut _,
+        };
+        let job_id = StartDocPrinterW(h_printer, 1, &mut doc_info as *mut _ as *mut _);
+        if job_id == 0 {
+            let err = std::io::Error::last_os_error();
+            ClosePrinter(h_printer);
+            return Err(format!("Error al iniciar trabajo de impresión: {}", err));
+        }
+
+        // 3) Iniciar página
+        if StartPagePrinter(h_printer) == 0 {
+            let err = std::io::Error::last_os_error();
+            EndDocPrinter(h_printer);
+            ClosePrinter(h_printer);
+            return Err(format!("Error al iniciar página: {}", err));
+        }
+
+        // 4) Escribir bytes ESC/POS crudos
+        let mut written: DWORD = 0;
+        if WritePrinter(
+            h_printer,
+            data.as_ptr() as *mut _,
+            data.len() as DWORD,
+            &mut written,
+        ) == 0 {
+            let err = std::io::Error::last_os_error();
+            EndPagePrinter(h_printer);
+            EndDocPrinter(h_printer);
+            ClosePrinter(h_printer);
+            return Err(format!("Error al enviar datos ESC/POS: {}", err));
+        }
+
+        // 5) Finalizar
+        EndPagePrinter(h_printer);
+        EndDocPrinter(h_printer);
+        ClosePrinter(h_printer);
+    }
+    Ok(())
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+     tauri::Builder::<tauri::Wry>::default()
+        .plugin(tauri_plugin_opener::init::<tauri::Wry>())
+        .plugin(tauri_plugin_sql::Builder::default().build::<tauri::Wry>())
+        .plugin(tauri_plugin_shell::init::<tauri::Wry>())
+        .plugin(tauri_plugin_fs::init::<tauri::Wry>())
+        .plugin(tauri_plugin_dialog::init::<tauri::Wry>())
+        .invoke_handler(tauri::generate_handler![print_raw_usb])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
      tauri::Builder::<tauri::Wry>::default()
