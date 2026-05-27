@@ -144,6 +144,15 @@ export default function Paqueteria() {
     }
   };
 
+  const handleReimprimirPaquete = async (id: number) => {
+    try {
+      await createPdfPaqueteria({ id }, 'print');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Error desconocido';
+      alert(`Error al reimprimir: ${msg}`);
+    }
+  };
+
   const handleCobrarPaquete = async (id: number) => {
     try {
       const fecha = obtenerFechaHoraLocal();
@@ -268,12 +277,20 @@ export default function Paqueteria() {
                       <td className="px-4 py-2 border-b">{paquete.usuario_nombre}</td>
                     )}
                     <td className="px-4 py-2 border-b">
-                      <button
-                        onClick={() => handleCobrarPaquete(paquete.id)}
-                        className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm"
-                      >
-                        Cobrar
-                      </button>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleCobrarPaquete(paquete.id)}
+                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm"
+                        >
+                          Cobrar
+                        </button>
+                        <button
+                          onClick={() => handleReimprimirPaquete(paquete.id)}
+                          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                        >
+                          Reimprimir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

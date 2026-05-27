@@ -72,6 +72,14 @@ export default function Estacionamiento() {
     };
   }, []); 
 
+  const handleReimprimirTicket = async (id: number, placas: string) => {
+    try {
+      await createTicketEstacionamiento({ id, placasFormatted: placas.toUpperCase() }, 'print');
+    } catch (error) {
+      alert(`Error al reimprimir: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    }
+  };
+
   const handleGenerarTicket = async () => {
     if (!placas) {
       alert("Por favor, ingrese las placas del vehículo.");
@@ -363,12 +371,20 @@ export default function Estacionamiento() {
                         </td>
                       )}
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => checkTicket(ticket.id)}
-                          className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
-                        >
-                          Cobrar
-                        </button>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => checkTicket(ticket.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs"
+                          >
+                            Cobrar
+                          </button>
+                          <button
+                            onClick={() => handleReimprimirTicket(ticket.id, ticket.placas)}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
+                          >
+                            Reimprimir
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
