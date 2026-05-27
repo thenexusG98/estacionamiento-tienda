@@ -15,6 +15,17 @@ pdfMake.fonts = {
 };
 
 import printjs from 'print-js';
+import { invoke } from '@tauri-apps/api/core';
+
+/** Limpia trabajos atascados en la cola antes de enviar un nuevo trabajo de impresión. */
+async function _autoPurgeQueue(): Promise<void> {
+  const nombre = localStorage.getItem('pos_printer_name')?.trim();
+  if (!nombre) return;
+  try {
+    await invoke('purge_print_queue', { printerName: nombre });
+    await new Promise(r => setTimeout(r, 300));
+  } catch (_) { /* no bloquear la impresión si falla el purge */ }
+}
 
 interface CreatePdfProps {
     id: string | number; // Asegúrate de que id sea un string o number
@@ -122,6 +133,7 @@ interface CreatePdfProps {
       }
   
       if (output === 'print') {
+        await _autoPurgeQueue();
         return new Promise((resolve) => {
           pdfDoc.getBase64((data) => {
             printjs({
@@ -192,6 +204,7 @@ interface CreatePdfProps {
       }
   
       if (output === 'print') {
+        await _autoPurgeQueue();
         return new Promise((resolve) => {
           pdfDoc.getBase64((data) => {
             printjs({
@@ -288,6 +301,7 @@ const docDefinition: TDocumentDefinitions = {
   const pdfDoc = pdfMake.createPdf(docDefinition);
 
   if (output === 'print') {
+    await _autoPurgeQueue();
     return new Promise((resolve) => {
       pdfDoc.getBase64((data) => {
         printjs({ printable: data, type: 'pdf', base64: true });

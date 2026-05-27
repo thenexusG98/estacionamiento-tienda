@@ -1,272 +1,235 @@
 /**
  * ConfigImpresora.tsx
- * Panel de configuración y prueba de comunicación para la impresora POS-5890U (USB raw)
- * La impresora se comunica via puerto USB de Windows: USB001, USB002, etc.
+ * Panel de gestión de cola de impresión para evitar atascos en el spooler de Windows.
+ * Permite detectar impresoras instaladas, limpiar la cola y hacer pruebas de impresión.
  */
-import { useState, useCallback } from 'react';
-import {
-  connectPrinter,
-  disconnectPrinter,
-  isPrinterConnected,
-  getPrinterPort,
-  printerTestPage,
-  printerLine,
-  printerSeparator,
-  printerCut,
-} from '../lib/ThermalPrinter';
+import { useState, useCallback, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+import printjs from 'print-js';
 import {
   FaPrint,
-  FaPlug,
-  FaUnlink,
+  FaTrash,
+  FaSearch,
   FaCheckCircle,
   FaTimesCircle,
-  FaSync,
-  FaUsb,
+  FaInfoCircle,
 } from 'react-icons/fa';
 
-type LogEntry = { type: 'ok' | 'error' | 'info'; text: string; ts: string };
+pdfMake.vfs = pdfFonts.vfs;
 
-const COMMON_PORTS = ['POS-5890U', 'Generic / Text Only', 'POS Printer', 'Thermal Printer'];
+const STORAGE_KEY = 'pos_printer_name';
+
+type LogEntry = { type: 'ok' | 'error' | 'info'; text: string; ts: string };
 
 function logTs(): string {
   return new Date().toLocaleTimeString('es-MX');
 }
 
 export default function ConfigImpresora() {
-  const [connected, setConnected]   = useState(isPrinterConnected());
-  const [loading, setLoading]       = useState(false);
-  const [logs, setLogs]             = useState<LogEntry[]>([]);
-  const [customText, setCustomText] = useState('');
-  const [portName, setPortName]     = useState(getPrinterPort() ?? 'USB001');
+  const [printerName, setPrinterName] = useState<string>(
+    () => localStorage.getItem(STORAGE_KEY) ?? ''
+  );
+  const [printers, setPrinters] = useState<string[]>([]);
+  const [loading, setLoading]   = useState(false);
+  const [logs, setLogs]         = useState<LogEntry[]>([]);
 
   const addLog = useCallback((type: LogEntry['type'], text: string) => {
     setLogs((prev) => [{ type, text, ts: logTs() }, ...prev].slice(0, 100));
   }, []);
 
-  // ── Conectar ──────────────────────────────────────────────────────────────
-  const handleConnect = async () => {
+  // Persistir el nombre en localStorage cada vez que el usuario lo cambia
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, printerName);
+  }, [printerName]);
+
+  // ── Detectar impresoras instaladas ────────────────────────────────────────
+  const handleDetectar = async () => {
     setLoading(true);
-    addLog('info', `Intentando conectar al puerto ${portName}…`);
-    const result = await connectPrinter(portName);
-    if (result.ok) {
-      setConnected(true);
-      addLog('ok', result.message);
-    } else {
-      setConnected(false);
-      addLog('error', result.message);
+    addLog('info', 'Consultando impresoras instaladas en Windows…');
+    try {
+      const lista = await invoke<string[]>('list_printers');
+      setPrinters(lista);
+      if (lista.length === 0) {
+        addLog('error', 'No se encontraron impresoras instaladas.');
+      } else {
+        addLog('ok', `${lista.length} impresora(s): ${lista.join(', ')}`);
+      }
+    } catch (err: any) {
+      addLog('error', `Error al listar impresoras: ${err?.message ?? err}`);
     }
     setLoading(false);
   };
 
-  // ── Desconectar ───────────────────────────────────────────────────────────
-  const handleDisconnect = async () => {
+  // ── Limpiar cola de impresión ─────────────────────────────────────────────
+  const handlePurge = async () => {
+    if (!printerName.trim()) {
+      addLog('error', 'Selecciona o escribe el nombre de la impresora primero.');
+      return;
+    }
     setLoading(true);
-    await disconnectPrinter();
-    setConnected(false);
-    addLog('info', 'Impresora desconectada.');
+    addLog('info', `Limpiando cola de "${printerName}"…`);
+    try {
+      const msg = await invoke<string>('purge_print_queue', { printerName });
+      addLog('ok', msg || 'Cola limpiada.');
+    } catch (err: any) {
+      addLog('error', `Error al limpiar cola: ${err?.message ?? err}`);
+    }
     setLoading(false);
   };
 
   // ── Página de prueba ──────────────────────────────────────────────────────
-  const handleTestPage = async () => {
+  const handleTestPrint = async () => {
+    if (!printerName.trim()) {
+      addLog('error', 'Selecciona o escribe el nombre de la impresora primero.');
+      return;
+    }
     setLoading(true);
-    addLog('info', 'Enviando página de prueba…');
-    const result = await printerTestPage();
-    addLog(result.ok ? 'ok' : 'error', result.message);
-    setLoading(false);
-  };
-
-  // ── Texto personalizado ───────────────────────────────────────────────────
-  const handlePrintCustom = async () => {
-    if (!customText.trim()) return;
-    setLoading(true);
-    addLog('info', `Imprimiendo texto: "${customText}"`);
+    addLog('info', `Enviando página de prueba a "${printerName}"…`);
     try {
-      await printerLine(customText, { align: 'center' });
-      await printerSeparator('-', 32);
-      await printerCut(true);
-      addLog('ok', 'Texto enviado correctamente.');
+      // Auto-purge antes de imprimir para evitar que se quede atascada
+      await invoke('purge_print_queue', { printerName }).catch(() => {});
+      await new Promise(r => setTimeout(r, 300));
+
+      const doc = {
+        pageSize: { width: 100, height: 'auto' as any },
+        pageMargins: [4, 4, 4, 4] as [number, number, number, number],
+        content: [
+          { text: '=== PRUEBA DE IMPRESORA ===', alignment: 'center', fontSize: 9, bold: true },
+          { text: printerName, alignment: 'center', fontSize: 7, margin: [0, 2, 0, 2] },
+          { text: new Date().toLocaleString('es-MX'), alignment: 'center', fontSize: 7 },
+          { canvas: [{ type: 'line', x1: 0, y1: 4, x2: 92, y2: 4, lineWidth: 0.5 }] },
+          { text: 'Impresión OK', alignment: 'center', fontSize: 9, margin: [0, 4, 0, 4] },
+          { canvas: [{ type: 'line', x1: 0, y1: 4, x2: 92, y2: 4, lineWidth: 0.5 }] },
+        ],
+      };
+
+      const pdf = pdfMake.createPdf(doc as any);
+      pdf.getBase64((data) => {
+        printjs({ printable: data, type: 'pdf', base64: true });
+        addLog('ok', 'Trabajo de prueba enviado al spooler.');
+        setLoading(false);
+      });
     } catch (err: any) {
       addLog('error', `Error: ${err?.message ?? err}`);
+      setLoading(false);
     }
-    setLoading(false);
   };
-
-  // ── Pulso ACK (secuencia mínima) ─────────────────────────────────────────
-  const handlePing = async () => {
-    setLoading(true);
-    addLog('info', 'Enviando pulso de inicialización (ESC @)…');
-    try {
-      await printerLine('PING OK', { align: 'center', bold: true });
-      await printerCut(true);
-      addLog('ok', 'Pulso ESC @ enviado. Impresora respondió.');
-    } catch (err: any) {
-      addLog('error', `Sin respuesta: ${err?.message ?? err}`);
-    }
-    setLoading(false);
-  };
-
-  // ── Indicador de estado ───────────────────────────────────────────────────
-  const StatusBadge = () =>
-    connected ? (
-      <span className="inline-flex items-center gap-1 text-green-700 bg-green-100 px-3 py-1 rounded-full text-sm font-semibold">
-        <FaCheckCircle /> Conectada
-      </span>
-    ) : (
-      <span className="inline-flex items-center gap-1 text-red-700 bg-red-100 px-3 py-1 rounded-full text-sm font-semibold">
-        <FaTimesCircle /> Desconectada
-      </span>
-    );
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
+
       {/* Encabezado */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <FaPrint className="text-blue-600" />
-            Configuración de Impresora
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            POS-5890U — Puerto USB directo (USB001, USB002…)
-          </p>
-        </div>
-        <StatusBadge />
-      </div>
+      <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+        <FaPrint className="text-blue-600" />
+        Gestión de Impresora POS
+      </h2>
 
-      {/* ── Nombre de la impresora ───────────────────────────────────────── */}
+      {/* ── Nombre / selección ───────────────────────────────────────────── */}
       <section className="bg-white rounded-xl shadow p-5 space-y-4">
-        <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-          <FaUsb /> Nombre de la impresora (Windows)
-        </h3>
+        <h3 className="font-semibold text-gray-700">Impresora activa</h3>
 
-        {/* Instrucción paso a paso */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800 space-y-1">
-          <p className="font-semibold">¿Cómo encontrar el nombre?</p>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 space-y-1">
+          <p className="font-semibold flex items-center gap-1"><FaInfoCircle /> ¿Cómo configurar?</p>
           <ol className="list-decimal list-inside space-y-0.5">
-            <li>Abre <strong>Panel de control → Dispositivos e impresoras</strong></li>
-            <li>Busca tu impresora POS (puede llamarse <em>"POS-5890U"</em>, <em>"Generic / Text Only"</em>, <em>"POS Printer"</em>, etc.)</li>
-            <li>Copia ese nombre <strong>exactamente</strong> como aparece (respeta mayúsculas y espacios)</li>
+            <li>Haz clic en <strong>"Detectar impresoras"</strong> para ver las instaladas.</li>
+            <li>Selecciona tu impresora POS de la lista o escríbela manualmente.</li>
+            <li>El nombre se guarda automáticamente y se usará en cada impresión.</li>
           </ol>
-          <p className="mt-1 text-yellow-700">⚠ No uses el nombre del puerto (USB001/USB002). Usa el <strong>nombre de la impresora</strong>.</p>
         </div>
 
-        <div className="flex flex-wrap gap-3 items-end">
+        {/* Input de nombre */}
+        <div className="flex gap-3 items-end flex-wrap">
           <label className="flex flex-col text-sm text-gray-600 flex-1 min-w-[200px]">
-            Nombre de la impresora
+            Nombre de la impresora (tal como aparece en Windows)
             <input
               type="text"
-              value={portName}
-              onChange={(e) => setPortName(e.target.value)}
+              value={printerName}
+              onChange={(e) => setPrinterName(e.target.value)}
               placeholder="ej: POS-5890U"
               className="mt-1 border rounded px-3 py-2 text-gray-800"
-              disabled={connected}
             />
           </label>
 
-          <div className="flex gap-2 flex-wrap">
-            {COMMON_PORTS.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPortName(p)}
-                disabled={connected}
-                className={`px-3 py-1 rounded text-xs border ${
-                  portName === p
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
-                } disabled:opacity-40`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+          <button
+            disabled={loading}
+            onClick={handleDetectar}
+            className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FaSearch />
+            {loading ? 'Buscando…' : 'Detectar impresoras'}
+          </button>
         </div>
+
+        {/* Lista de impresoras detectadas */}
+        {printers.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500 font-medium">Impresoras detectadas — haz clic para seleccionar:</p>
+            <div className="flex flex-wrap gap-2">
+              {printers.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => { setPrinterName(p); addLog('info', `Seleccionada: ${p}`); }}
+                  className={`px-3 py-1 rounded text-sm border transition-colors ${
+                    printerName === p
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
+                  }`}
+                >
+                  {printerName === p
+                    ? <><FaCheckCircle className="inline mr-1" />{p}</>
+                    : p}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {printerName.trim() && (
+          <p className="text-xs text-green-700 flex items-center gap-1">
+            <FaCheckCircle /> Guardado en configuración: <strong>{printerName}</strong>
+          </p>
+        )}
+        {!printerName.trim() && (
+          <p className="text-xs text-orange-600 flex items-center gap-1">
+            <FaTimesCircle /> Sin impresora configurada — las impresiones podrían fallar.
+          </p>
+        )}
       </section>
 
-      {/* ── Acciones de conexión ─────────────────────────────────────────── */}
-      <section className="bg-white rounded-xl shadow p-5">
-        <h3 className="font-semibold text-gray-700 mb-4">Control de conexión</h3>
+      {/* ── Acciones de cola ─────────────────────────────────────────────── */}
+      <section className="bg-white rounded-xl shadow p-5 space-y-4">
+        <h3 className="font-semibold text-gray-700">Control de cola de impresión</h3>
+        <p className="text-xs text-gray-500">
+          Si la impresora deja de responder después de varios tickets, usa <strong>"Limpiar cola"</strong>
+          para eliminar trabajos en error que bloquean el spooler de Windows.
+        </p>
+
         <div className="flex flex-wrap gap-3">
           <button
-            disabled={loading || connected || !portName.trim()}
-            onClick={handleConnect}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || !printerName.trim()}
+            onClick={handlePurge}
+            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FaPlug />
-            {loading && !connected ? 'Conectando…' : `Conectar a ${portName || '…'}`}
+            <FaTrash />
+            {loading ? 'Limpiando…' : 'Limpiar cola de impresión'}
           </button>
 
           <button
-            disabled={loading || !connected}
-            onClick={handleDisconnect}
-            className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FaUnlink />
-            Desconectar
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 mt-3">
-          Al conectar se envía un comando ESC @ al puerto indicado para verificar
-          que la impresora responde. Si el puerto es incorrecto aparecerá un error en el registro.
-        </p>
-      </section>
-
-      {/* ── Pruebas de comunicación ──────────────────────────────────────── */}
-      <section className="bg-white rounded-xl shadow p-5 space-y-4">
-        <h3 className="font-semibold text-gray-700">Pruebas de comunicación</h3>
-
-        {/* Página de prueba completa */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <button
-            disabled={loading || !connected}
-            onClick={handleTestPage}
+            disabled={loading || !printerName.trim()}
+            onClick={handleTestPrint}
             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FaPrint />
-            Imprimir página de prueba
+            {loading ? 'Enviando…' : 'Imprimir página de prueba'}
           </button>
-          <span className="text-xs text-gray-500">
-            Imprime texto de muestra con diferentes estilos y corta el papel.
-          </span>
         </div>
 
-        {/* Pulso de inicialización */}
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-          <button
-            disabled={loading || !connected}
-            onClick={handlePing}
-            className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FaSync />
-            Ping ESC @
-          </button>
-          <span className="text-xs text-gray-500">
-            Envía un reset ESC @ + "PING OK" para verificar que la comunicación funciona.
-          </span>
-        </div>
-
-        {/* Texto personalizado */}
-        <div className="space-y-2">
-          <label className="text-sm text-gray-600 font-medium block">
-            Imprimir texto personalizado
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={customText}
-              onChange={(e) => setCustomText(e.target.value)}
-              placeholder="Escribe cualquier texto…"
-              className="flex-1 border rounded px-3 py-2 text-sm"
-              onKeyDown={(e) => e.key === 'Enter' && handlePrintCustom()}
-            />
-            <button
-              disabled={loading || !connected || !customText.trim()}
-              onClick={handlePrintCustom}
-              className="flex items-center gap-1 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              <FaPrint /> Enviar
-            </button>
-          </div>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-800">
+          <p className="font-semibold">Nota:</p>
+          <p>La limpieza de cola ocurre <strong>automáticamente</strong> antes de cada ticket impreso
+            en el sistema. Este botón es para limpiar manualmente cuando la impresora no responde.</p>
         </div>
       </section>
 
@@ -308,16 +271,16 @@ export default function ConfigImpresora() {
 
       {/* ── Info técnica ─────────────────────────────────────────────────── */}
       <section className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 space-y-1">
-        <p className="font-semibold">Información técnica — POS-5890U</p>
+        <p className="font-semibold">¿Por qué se atasca la cola?</p>
         <ul className="list-disc list-inside space-y-0.5 text-xs text-blue-700">
-          <li>Protocolo: ESC/POS (Epson compatible)</li>
-          <li>Método: Windows Print Spooler API (OpenPrinter / WritePrinter con tipo RAW)</li>
-          <li>Requiere: <strong>nombre de la impresora</strong> tal como aparece en "Dispositivos e impresoras"</li>
-          <li>Ancho de papel: 58 mm (~32 caracteres fuente normal)</li>
-          <li>Sin diálogos de impresión: los bytes ESC/POS van directo al dispositivo</li>
-          <li>ESC @ al inicio de cada trabajo coloca el cabezal al inicio del papel</li>
+          <li>Cada ticket se envía como un PDF al spooler de Windows.</li>
+          <li>Si la impresora está ocupada o desconectada, el trabajo queda en estado <strong>Error</strong>.</li>
+          <li>Los tickets siguientes se encolan detrás del trabajo atascado y tampoco imprimen.</li>
+          <li>La limpieza automática elimina esos trabajos antes de enviar cada nuevo ticket.</li>
+          <li>Si el problema persiste, verifica que el nombre de la impresora sea correcto.</li>
         </ul>
       </section>
+
     </div>
   );
 }
